@@ -28,6 +28,7 @@ const APPS = [
     image: img("Culturalverse-icon.png"),
     color: 0xffb86b,
     status: "Story + Culture",
+    live: true,
     tags: ["Immersive Story", "Culture Systems", "Memory Design", "Knowledge Access"]
   },
   {
@@ -39,6 +40,7 @@ const APPS = [
     image: img("thelivingknowledge.png"),
     color: 0x77f0b2,
     status: "Knowledge Engine",
+    live: false,
     tags: ["Knowledge Graph", "Editorial System", "Learning Layer", "Living Archive"]
   },
   {
@@ -50,6 +52,7 @@ const APPS = [
     image: img("ikestar.png"),
     color: 0x67d9ff,
     status: "Sky Observatory",
+    live: true,
     tags: ["Star Map", "Navigation", "Cultural Astronomy", "Seasonal Sky"]
   },
   {
@@ -61,6 +64,7 @@ const APPS = [
     image: img("KMicon.png"),
     color: 0xa88cff,
     status: "Cosmic Systems",
+    live: true,
     tags: ["Worldbuilding", "Myth Systems", "Interconnection", "Cosmology"]
   }
 ];
@@ -247,7 +251,9 @@ const state = {
   lastInput:      performance.now(),
   camTargetPos:   new THREE.Vector3(),
   camTargetLook:  new THREE.Vector3(),
-  cameraLerping:  false,   // true while camera is animating to a target
+  cameraLerping:  false,
+  introActive:    true,
+  introStart:     0,
   cfg:            getLayout(),
   nodes:          new Map(),
   pickable:       [],
@@ -611,11 +617,24 @@ function makeCardTex(app, appTex) {
     if (tx > W - 120) { tx = 40; ty += 44; }
   });
 
+  // Coming Soon overlay for non-live portals
+  if (!app.live) {
+    roundRect(ctx, W/2 - 160, H/2 - 36, 320, 72, 24);
+    ctx.fillStyle   = "rgba(255,165,40,0.14)"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,165,40,0.52)"; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle    = "rgba(255,190,80,0.96)";
+    ctx.font         = "700 30px 'DM Sans', sans-serif";
+    ctx.textAlign    = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor  = "rgba(255,160,40,0.6)"; ctx.shadowBlur = 10;
+    ctx.fillText("🚧  Coming Soon", W/2, H/2);
+    ctx.shadowBlur = 0;
+  }
+
   // Launch hint
   ctx.fillStyle    = "rgba(140,160,200,0.46)";
   ctx.font         = "400 20px 'DM Sans', sans-serif";
-  ctx.textBaseline = "alphabetic";
-  ctx.fillText("Click again to launch →", 40, H - 22);
+  ctx.textAlign    = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText(app.live ? "Click again to launch →" : "In development — check back soon", 40, H - 22);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -1140,6 +1159,22 @@ function makeNodes() {
       })
     );
 
+    // Live status badge sprite — green glow for live, amber for coming-soon
+    const liveCol  = app.live ? new THREE.Color(0x44ff88) : new THREE.Color(0xffaa33);
+    const liveBadge = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeRadialTex(
+        Math.round(liveCol.r * 255),
+        Math.round(liveCol.g * 255),
+        Math.round(liveCol.b * 255),
+        app.live ? 0.80 : 0.55, 128
+      ),
+      transparent: true, opacity: app.live ? 0.90 : 0.60,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    liveBadge.position.set(0.68, 0.68, 0);
+    liveBadge.scale.set(0.38, 0.38, 1);
+    orbPivot.add(liveBadge);
+
     // Atmospheric halo
     const atm = new THREE.Sprite(new THREE.SpriteMaterial({
       map: makeRadialTex(colR, colG, colB, 0.22, 256),
@@ -1165,8 +1200,13 @@ function makeNodes() {
 
     // ── CARD — single composited plane, no z-fighting ─────────────────────
     // depthTest:false + depthWrite:false + renderOrder:10 = always draws clean
+    const CARD_OFFSETS = {
+      above: new THREE.Vector3(0,   3.10, 0),
+      right: new THREE.Vector3(2.2, 1.80, 0),
+      left:  new THREE.Vector3(-2.2, 1.80, 0)
+    };
     const cardGrp = new THREE.Group();
-    cardGrp.position.set(0, 3.10, 0);
+    cardGrp.position.copy(CARD_OFFSETS.above);
     cardGrp.visible = false;
 
     const cardPanel = new THREE.Mesh(
@@ -1194,9 +1234,10 @@ function makeNodes() {
 
     state.nodes.set(app.id, {
       app, group, ped, track, selRing,
-      orbPivot, orb, decal, atm,
+      orbPivot, orb, decal, atm, liveBadge,
       textBillboard, textSpin, textRing,
       cardGrp, cardPanel,
+      cardSide: 'above', CARD_OFFSETS,
       accentColor: col
     });
 
@@ -1227,13 +1268,23 @@ function placeNodes() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONNECTIONS — dashed CatmullRom curves hub→node
+// CONNECTIONS — dashed CatmullRom curves hub→node + ambient flow particles
 // ─────────────────────────────────────────────────────────────────────────────
+function makeFlowDotTex(r, g, b) {
+  const c = document.createElement("canvas"); c.width = c.height = 32;
+  const ctx = c.getContext("2d");
+  const grd = ctx.createRadialGradient(16,16,0,16,16,16);
+  grd.addColorStop(0,   `rgba(${r},${g},${b},1)`);
+  grd.addColorStop(0.45,`rgba(${r},${g},${b},0.55)`);
+  grd.addColorStop(1,   `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = grd; ctx.fillRect(0,0,32,32);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
 function makeConnections() {
   while (connGrp.children.length) {
     const c = connGrp.children[0];
-    c.geometry?.dispose();
-    c.material?.dispose();
+    c.geometry?.dispose(); c.material?.dispose();
     connGrp.remove(c);
   }
 
@@ -1253,6 +1304,9 @@ function makeConnections() {
       end
     ]);
 
+    // Store curve for flow particles (reused in updateNodes)
+    nd.curve = curve;
+
     const geo  = new THREE.BufferGeometry().setFromPoints(curve.getPoints(48));
     const mat  = new THREE.LineDashedMaterial({
       color: app.color, transparent: true, opacity: 0.17,
@@ -1261,6 +1315,32 @@ function makeConnections() {
     const line = new THREE.Line(geo, mat);
     line.computeLineDistances();
     connGrp.add(line);
+
+    // ── Flow particles — 4 luminous dots traveling hub → node
+    const col = new THREE.Color(app.color);
+    const dotTex = makeFlowDotTex(
+      Math.round(col.r * 255),
+      Math.round(col.g * 255),
+      Math.round(col.b * 255)
+    );
+
+    const FLOW_N = 4;
+    const flowItems = [];
+    for (let i = 0; i < FLOW_N; i++) {
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: dotTex, transparent: true, opacity: 0,
+        depthWrite: false, blending: THREE.AdditiveBlending
+      }));
+      spr.scale.set(0.13, 0.13, 1);
+      spr.renderOrder = 6;
+      connGrp.add(spr);
+      flowItems.push({
+        spr,
+        t:     i / FLOW_N,
+        speed: 0.0022 + Math.random() * 0.0014
+      });
+    }
+    nd.flowItems = flowItems;
   });
 }
 
@@ -1364,6 +1444,7 @@ function resetView(userInput = false) {
 
   setPanel(null);
   syncDock();
+  window.dispatchEvent(new Event("ikehub:selectionchange"));
 
   if (userInput) markInput();
 }
@@ -1393,17 +1474,30 @@ function selectApp(appId, userInput = false) {
 
   setPanel(nd.app);
   syncDock();
+  saveSession(appId);
+  window.dispatchEvent(new Event("ikehub:selectionchange"));
 
   if (userInput) markInput();
 }
 
 function focusNext() {
-  if (state.selected === null) {
-    selectApp(APPS[0].id, true);
-    return;
-  }
+  if (state.selected === null) { selectApp(APPS[0].id, true); return; }
   const idx = APPS.findIndex((a) => a.id === state.selected);
   selectApp(APPS[(idx + 1) % APPS.length].id, true);
+}
+
+function focusPrev() {
+  if (state.selected === null) { selectApp(APPS[APPS.length - 1].id, true); return; }
+  const idx = APPS.findIndex((a) => a.id === state.selected);
+  selectApp(APPS[(idx - 1 + APPS.length) % APPS.length].id, true);
+}
+
+function saveSession(appId) {
+  try { sessionStorage.setItem("ikehub_last", appId || ""); } catch (_) {}
+}
+
+function loadSession() {
+  try { return sessionStorage.getItem("ikehub_last") || null; } catch (_) { return null; }
 }
 
 function markInput() {
@@ -1449,7 +1543,16 @@ function attachEvents() {
 
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      resetView(true);
+      // Two-stage: first Esc collapses detail panel, second resets view
+      const panel = document.querySelector(".detail-panel");
+      if (panel && !panel.classList.contains("collapsed") && state.selected !== null) {
+        panel.classList.add("collapsed");
+        // Update toggle icon if present
+        const ic = panel.querySelector(".tog-icon2");
+        if (ic) ic.setAttribute("d", "M2 4l4 4 4-4");
+      } else {
+        resetView(true);
+      }
       return;
     }
     const n = Number(e.key);
@@ -1457,6 +1560,23 @@ function attachEvents() {
       selectApp(APPS[n - 1].id, true);
     }
   });
+
+  // Touch swipe — left swipe = next portal, right swipe = previous
+  let touchStartX = 0, touchStartY = 0;
+  renderer.domElement.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  renderer.domElement.addEventListener("touchend", (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    // Only register as swipe if horizontal dominates and movement is >55px
+    if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      if (dx < 0) focusNext();
+      else        focusPrev();
+    }
+  }, { passive: true });
 
   window.addEventListener("resize", onResize);
   btnReset.addEventListener("click", () => resetView(true));
@@ -1540,6 +1660,27 @@ function updateNodes(t) {
       nd.track.material.opacity, sel ? 0.17 : hov ? 0.13 : 0.09, 0.1
     );
 
+    // Live badge — pulse for live portals, dim steady for coming-soon
+    if (nd.liveBadge) {
+      if (app.live) {
+        nd.liveBadge.material.opacity = 0.72 + Math.sin(t * 2.8 + idx * 0.7) * 0.22;
+      } else {
+        nd.liveBadge.material.opacity = 0.38 + Math.sin(t * 1.2 + idx * 0.4) * 0.08;
+      }
+    }
+
+    // Flow particles — travel along connection curve hub→planet
+    if (nd.flowItems && nd.curve) {
+      nd.flowItems.forEach(fp => {
+        fp.t = (fp.t + fp.speed) % 1;
+        const pt = nd.curve.getPoint(fp.t);
+        fp.spr.position.copy(pt);
+        // Fade in/out at endpoints
+        const edge = fp.t < 0.08 ? fp.t / 0.08 : fp.t > 0.90 ? (1 - fp.t) / 0.10 : 1;
+        fp.spr.material.opacity = 0.78 * edge;
+      });
+    }
+
     // Text ring — always faces camera; crawl speed varies by state
     nd.textBillboard.lookAt(camera.position);
     const crawl = sel ? 0.010 : hov ? 0.006 : 0.0022;
@@ -1549,7 +1690,6 @@ function updateNodes(t) {
     );
 
     // Card — single plane, smooth opacity reveal
-    // depthTest:false on the material eliminates all z-fighting / flickering
     const cardTarget = sel ? 1.0 : 0.0;
     const newOp = THREE.MathUtils.lerp(nd.cardPanel.material.opacity, cardTarget, 0.076);
     nd.cardPanel.material.opacity = newOp;
@@ -1577,9 +1717,11 @@ function updateBackground(t) {
 
 function updateCamera() {
   if (state.cameraLerping) {
-    camera.position.lerp(state.camTargetPos, 0.056);
-    controls.target.lerp(state.camTargetLook, 0.072);
-    // Stop lerping once both are close enough — hand control back to OrbitControls
+    // Use a slower lerp for the cinematic intro flythrough
+    const lerpAlpha = state.introActive ? 0.018 : 0.056;
+    camera.position.lerp(state.camTargetPos, lerpAlpha);
+    controls.target.lerp(state.camTargetLook, state.introActive ? 0.024 : 0.072);
+    // Stop lerping once both are close enough
     if (
       camera.position.distanceTo(state.camTargetPos) < 0.04 &&
       controls.target.distanceTo(state.camTargetLook) < 0.04
@@ -1587,6 +1729,7 @@ function updateCamera() {
       camera.position.copy(state.camTargetPos);
       controls.target.copy(state.camTargetLook);
       state.cameraLerping = false;
+      state.introActive   = false;
     }
   }
   controls.update();
@@ -1615,6 +1758,37 @@ function onFrame() {
   updateBackground(t);
   updateCamera();
   composer.render();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRELOAD — warms browser image cache before Three.js TextureLoader runs
+// This ensures appTex.image.complete === true when makeCardTex is called
+// ─────────────────────────────────────────────────────────────────────────────
+function preloadImages() {
+  const urls = [...APPS.map(a => a.image), HUB_IMAGE].filter(Boolean);
+  return Promise.allSettled(
+    urls.map(url => new Promise((resolve) => {
+      const el = new window.Image();
+      el.crossOrigin = "anonymous";
+      el.onload  = resolve;
+      el.onerror = resolve; // resolve even on failure — don't block init
+      el.src     = url;
+    }))
+  );
+}
+
+// Deferred card refresh — re-renders any card whose icon wasn't ready at init time
+function refreshCardTextures() {
+  state.nodes.forEach((nd) => {
+    const t = texCache.get(nd.app.image);
+    if (!t) return;
+    // Only refresh if the image is now loaded
+    if (t.image && t.image.complete && t.image.naturalWidth > 0) {
+      if (nd.cardPanel.material.map) nd.cardPanel.material.map.dispose();
+      nd.cardPanel.material.map        = makeCardTex(nd.app, t);
+      nd.cardPanel.material.needsUpdate = true;
+    }
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1662,7 +1836,42 @@ function injectCollapseButtons() {
         : "M2 8l4-4 4 4"); // up = collapse
     });
   }
+
+  // ── Card position toggle — cycles card above/right/left of planet ──────────
+  const detailPanel2 = document.querySelector(".detail-panel");
+  const cardPosBtn   = document.createElement("button");
+  cardPosBtn.id          = "card-pos-btn";
+  cardPosBtn.type        = "button";
+  cardPosBtn.className   = "btn btn-secondary";
+  cardPosBtn.style.cssText = "margin-top:8px;width:100%;font-size:11.5px;opacity:0;pointer-events:none;transition:opacity 0.2s";
+  cardPosBtn.innerHTML   = "⟺ Reposition Card";
+
+  cardPosBtn.addEventListener("click", () => {
+    const nd = state.nodes.get(state.selected);
+    if (!nd) return;
+    const sides  = ["above", "right", "left"];
+    const labels = { above: "Above ↑", right: "Right →", left: "← Left" };
+    nd.cardSide  = sides[(sides.indexOf(nd.cardSide) + 1) % 3];
+    nd.cardGrp.position.copy(nd.CARD_OFFSETS[nd.cardSide]);
+    cardPosBtn.textContent = `⟺ Card: ${labels[nd.cardSide]}`;
+  });
+
+  if (detailPanel2) {
+    const hint = detailPanel2.querySelector(".hint");
+    if (hint) hint.before(cardPosBtn);
+    else detailPanel2.appendChild(cardPosBtn);
+  }
+
+  // Show/hide based on selection — patch syncDock to also update this button
+  const _origSync = syncDock;
+  window.addEventListener("ikehub:selectionchange", () => {
+    const isSelected = state.selected !== null;
+    cardPosBtn.style.opacity        = isSelected ? "1" : "0";
+    cardPosBtn.style.pointerEvents  = isSelected ? "auto" : "none";
+    if (!isSelected) cardPosBtn.textContent = "⟺ Reposition Card";
+  });
 }
+
 function init() {
   console.log("IkeHub main.js loaded:", import.meta.url);
   console.log("IkeHub image base:", IMAGE_BASE);
@@ -1677,15 +1886,37 @@ function init() {
   makeConnections();
   buildDock();
   setPanel(null);
-  resetView(false);
-  attachEvents();
 
+  // ── Entry flythrough — camera starts in deep space, pulls into hub ─────────
+  state.introStart = performance.now();
+  state.introActive = true;
+  camera.position.set(-22, 6, -42);   // dramatic far-angle start
+  controls.target.set(0, 1.25, 0);
+  controls.update();
+  // resetView activates the lerp toward the overview position
+  resetView(false);
+
+  // ── Restore last selected portal from session ───────────────────────────────
+  const last = loadSession();
+  if (last && APPS.find((a) => a.id === last)) {
+    setTimeout(() => selectApp(last, false), 3200); // after flythrough settles
+  }
+
+  attachEvents();
   renderer.setAnimationLoop(onFrame);
   injectCollapseButtons();
+
+  setTimeout(refreshCardTextures, 1500);
+  setTimeout(refreshCardTextures, 4000);
+}
+
+async function boot() {
+  await preloadImages();
+  init();
 }
 
 if (document.fonts?.ready) {
-  document.fonts.ready.then(init).catch(init);
+  document.fonts.ready.then(boot).catch(init);
 } else {
-  init();
+  boot();
 }
