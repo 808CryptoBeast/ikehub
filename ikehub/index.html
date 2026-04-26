@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  <title>IkeHub — The Ikeverse Portal</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.183.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main aria-label="IkeHub 3D portal">
+    <canvas id="scene"></canvas>
+
+    <div class="app-shell">
+      <header class="header">
+        <section class="brand-card">
+          <div class="eyebrow">Ikeverse Hub</div>
+          <h1 class="title">IkeHub</h1>
+          <p class="subtitle">
+            A cinematic Three.js portal that showcases the Ikeverse ecosystem:
+            The Culturalverse, The Living Knowledge Platform, IkeStar, and The Cosmic Weave.
+          </p>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch legend-cyan"></span> Active portal</span>
+            <span class="legend-item"><span class="legend-swatch legend-gold"></span> Hub core</span>
+            <span class="legend-item"><span class="legend-swatch legend-violet"></span> Knowledge network</span>
+          </div>
+        </section>
+
+        <aside class="meta-card" aria-label="Hub status">
+          <div class="meta-grid">
+            <div class="meta-item">
+              <div class="meta-label">Portals</div>
+              <div class="meta-value" id="meta-app-count">4</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Mode</div>
+              <div class="meta-value" id="meta-mode">Overview</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Input</div>
+              <div class="meta-value">Pointer + Keys</div>
+            </div>
+            <div class="meta-item">
+              <div class="meta-label">Renderer</div>
+              <div class="meta-value">WebGL</div>
+            </div>
+          </div>
+          <div class="hint">
+            Drag to orbit. Click a portal to focus. Press <strong>1–4</strong> to jump between apps. Press <strong>Esc</strong> to reset.
+          </div>
+        </aside>
+      </header>
+
+      <aside class="detail-panel" id="detail-panel" aria-live="polite">
+        <div class="detail-top">
+          <span class="status-pill">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">Showcase Portal</span>
+          </span>
+          <button class="btn btn-secondary" id="reset-view-btn" type="button">Reset View</button>
+        </div>
+
+        <h2 class="detail-title" id="detail-title">IkeHub</h2>
+        <p class="detail-subtitle" id="detail-subtitle">The gateway into the Ikeverse ecosystem.</p>
+        <p class="detail-description" id="detail-description">
+          Select an app portal to focus the camera, inspect the experience, and launch the destination.
+        </p>
+
+        <div class="tag-list" id="detail-tags"></div>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" id="launch-link" href="#" target="_self">Launch Experience</a>
+          <button class="btn btn-secondary" id="focus-next-btn" type="button">Next Portal</button>
+        </div>
+
+        <p class="hint">
+          This scaffold is data-driven. Add more apps by extending the <code>APPS</code> array in <code>main.js</code>.
+        </p>
+      </aside>
+
+      <nav class="dock" id="dock" aria-label="IkeHub portals"></nav>
+      <p class="screen-reader-only" id="live-region" aria-live="polite"></p>
+    </div>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
