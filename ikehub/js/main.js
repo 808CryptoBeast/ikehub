@@ -14,7 +14,7 @@ const APPS = [
     subtitle: "A living world of culture, story, memory, and identity.",
     description: "A narrative-first portal into cultural knowledge, story structures, and immersive heritage experiences across the Ikeverse ecosystem.",
     href: "https://808cryptobeast.github.io/culturalverse/",
-    image: "assets/images/Culturalverse-icon.png",
+    image: img("Culturalverse-icon.png"),
     color: 0xffb86b,
     status: "Story + Culture",
     tags: ["Immersive Story", "Culture Systems", "Memory Design", "Knowledge Access"]
@@ -25,7 +25,7 @@ const APPS = [
     subtitle: "Knowledge as a living, connected ecosystem.",
     description: "A platform for organizing, surfacing, and evolving knowledge through interlinked structures, editorial systems, and living archives.",
     href: "living-knowledge.html",
-    image: "assets/images/thelivingknowledge.png",
+    image: img("thelivingknowledge.png"),
     color: 0x77f0b2,
     status: "Knowledge Engine",
     tags: ["Knowledge Graph", "Editorial System", "Learning Layer", "Living Archive"]
@@ -36,7 +36,7 @@ const APPS = [
     subtitle: "A celestial observatory rooted in navigation and sky knowledge.",
     description: "An interactive star experience inspired by Hawaiian wayfinding, celestial navigation, seasonal sky systems, and story-rich astronomical interpretation.",
     href: "https://808cryptobeast.github.io/Ikestar/",
-    image: "assets/images/ikestar.png",
+    image: img("ikestar.png"),
     color: 0x67d9ff,
     status: "Sky Observatory",
     tags: ["Star Map", "Navigation", "Cultural Astronomy", "Seasonal Sky"]
@@ -47,15 +47,15 @@ const APPS = [
     subtitle: "A connected field of myth, systems, and cosmic design.",
     description: "A visually rich exploratory layer connecting symbolic systems, narrative structures, worldbuilding, and the larger cosmology of the Ikeverse.",
     href: "https://808cryptobeast.github.io/Ikeverse/",
-    image: "assets/images/KMicon.png",
+    image: img("KMicon.png"),
     color: 0xa88cff,
     status: "Cosmic Systems",
     tags: ["Worldbuilding", "Myth Systems", "Interconnection", "Cosmology"]
   }
 ];
 
-const HUB_IMAGE  = "assets/images/ikehub.png";
-const HUB_NAME   = "IkeHub";
+const HUB_IMAGE = img("ikehub.png");
+const HUB_NAME = "IkeHub";
 const IDLE_DELAY = 7000;
 
 // ─────────────────────────────────────────────────────────────────────────────
