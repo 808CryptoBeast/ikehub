@@ -161,20 +161,12 @@ world.add(bgGroup, envGroup, nodeRoot, connGrp);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILS
-// This wrapper keeps your older timer.update() / timer.getElapsed() loop working.
-// THREE.Clock itself does not have update() or getElapsed().
 // ─────────────────────────────────────────────────────────────────────────────
 const timer = {
-  clock: new THREE.Clock(),
+  clock:   new THREE.Clock(),
   elapsed: 0,
-
-  update() {
-    this.elapsed = this.clock.getElapsedTime();
-  },
-
-  getElapsed() {
-    return this.elapsed;
-  }
+  update()     { this.elapsed = this.clock.getElapsedTime(); },
+  getElapsed() { return this.elapsed; }
 };
 
 const raycaster = new THREE.Raycaster();
@@ -190,9 +182,7 @@ function getTex(path) {
     path,
     undefined,
     undefined,
-    (err) => {
-      console.warn("IkeHub texture failed to load:", path, err);
-    }
+    (err) => { console.warn("IkeHub texture failed:", path, err); }
   );
 
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -220,42 +210,30 @@ function getLayout() {
 
   if (w <= 680) {
     return {
-      orbitR: 4.2,
-      ellipseZ: 0.8,
-      nodeScale: 0.78,
-      camOvPos: new THREE.Vector3(0, 7.2, 14.6),
-      camOvTgt: new THREE.Vector3(0, 1.0, 0),
-      focusDist: 3.0,
-      focusH: 2.8,
-      mobile: true,
-      tablet: false
+      orbitR: 4.2, ellipseZ: 0.8, nodeScale: 0.78,
+      camOvPos:  new THREE.Vector3(0, 7.2, 14.6),
+      camOvTgt:  new THREE.Vector3(0, 1.0, 0),
+      focusDist: 3.0, focusH: 2.8,
+      mobile: true, tablet: false
     };
   }
 
   if (w <= 1080) {
     return {
-      orbitR: 5.5,
-      ellipseZ: 0.9,
-      nodeScale: 0.87,
-      camOvPos: new THREE.Vector3(0, 5.6, 15.0),
-      camOvTgt: new THREE.Vector3(0, 1.2, 0),
-      focusDist: 3.4,
-      focusH: 2.1,
-      mobile: false,
-      tablet: true
+      orbitR: 5.5, ellipseZ: 0.9, nodeScale: 0.87,
+      camOvPos:  new THREE.Vector3(0, 5.6, 15.0),
+      camOvTgt:  new THREE.Vector3(0, 1.2, 0),
+      focusDist: 3.4, focusH: 2.1,
+      mobile: false, tablet: true
     };
   }
 
   return {
-    orbitR: 7.0,
-    ellipseZ: 1.0,
-    nodeScale: 0.96,
-    camOvPos: new THREE.Vector3(0, 4.8, 15.8),
-    camOvTgt: new THREE.Vector3(0, 1.25, 0),
-    focusDist: 3.8,
-    focusH: 1.65,
-    mobile: false,
-    tablet: false
+    orbitR: 7.0, ellipseZ: 1.0, nodeScale: 0.96,
+    camOvPos:  new THREE.Vector3(0, 4.8, 15.8),
+    camOvTgt:  new THREE.Vector3(0, 1.25, 0),
+    focusDist: 3.8, focusH: 1.65,
+    mobile: false, tablet: false
   };
 }
 
@@ -263,17 +241,17 @@ function getLayout() {
 // STATE
 // ─────────────────────────────────────────────────────────────────────────────
 const state = {
-  selected: null,
-  hovered: null,
-  spinning: true,
-  lastInput: performance.now(),
-  camTargetPos: new THREE.Vector3(),
+  selected:      null,
+  hovered:       null,
+  spinning:      true,
+  lastInput:     performance.now(),
+  camTargetPos:  new THREE.Vector3(),
   camTargetLook: new THREE.Vector3(),
-  cfg: getLayout(),
-  nodes: new Map(),
-  pickable: [],
-  dockBtns: new Map(),
-  hub: {}
+  cfg:           getLayout(),
+  nodes:         new Map(),
+  pickable:      [],
+  dockBtns:      new Map(),
+  hub:           {}
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -292,15 +270,14 @@ function roundRect(ctx, x, y, w, h, r) {
 function wrapText(ctx, text, x, y, maxW, lineH) {
   const words = text.split(" ");
   let line = "";
-  let cy = y;
+  let cy   = y;
 
   words.forEach((word, i) => {
     const test = line + word + " ";
-
     if (ctx.measureText(test).width > maxW && i > 0) {
       ctx.fillText(line.trimEnd(), x, cy);
       line = word + " ";
-      cy += lineH;
+      cy  += lineH;
     } else {
       line = test;
     }
@@ -309,23 +286,48 @@ function wrapText(ctx, text, x, y, maxW, lineH) {
   ctx.fillText(line.trimEnd(), x, cy);
 }
 
+// Simple radial glow / halo texture
 function makeRadialTex(r, g, b, peak = 0.5, size = 256) {
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-
+  const c   = document.createElement("canvas");
+  c.width   = c.height = size;
   const ctx = c.getContext("2d");
-  const grd = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-
-  grd.addColorStop(0, `rgba(${r},${g},${b},${peak})`);
+  const grd = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  grd.addColorStop(0,    `rgba(${r},${g},${b},${peak})`);
   grd.addColorStop(0.42, `rgba(${r},${g},${b},${peak * 0.4})`);
-  grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
-
+  grd.addColorStop(1,    `rgba(${r},${g},${b},0)`);
   ctx.fillStyle = grd;
   ctx.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+// Multi-layer organic vapor / smoke texture — used around galaxy core
+function makeVaporTex(r, g, b, size = 512) {
+  const c   = document.createElement("canvas");
+  c.width   = c.height = size;
+  const ctx = c.getContext("2d");
+
+  // Five offset radials at different centers/sizes = organic smoked-glass look
+  const layers = [
+    { ox: 0.50, oy: 0.50, lr: 0.50, a: 0.14 },
+    { ox: 0.42, oy: 0.46, lr: 0.34, a: 0.10 },
+    { ox: 0.58, oy: 0.54, lr: 0.38, a: 0.09 },
+    { ox: 0.36, oy: 0.60, lr: 0.28, a: 0.07 },
+    { ox: 0.64, oy: 0.40, lr: 0.26, a: 0.07 }
+  ];
+
+  layers.forEach(({ ox, oy, lr, a }) => {
+    const grd = ctx.createRadialGradient(ox*size, oy*size, 0, ox*size, oy*size, lr*size);
+    grd.addColorStop(0,   `rgba(${r},${g},${b},${a})`);
+    grd.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.5})`);
+    grd.addColorStop(1.0, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, size, size);
+  });
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-
   return t;
 }
 
@@ -334,257 +336,333 @@ function makeRadialTex(r, g, b, peak = 0.5, size = 256) {
 // ─────────────────────────────────────────────────────────────────────────────
 function makePlanetTex(col, variant, size = 512) {
   const rng = seeded(variant * 137 + 91);
-  const R = Math.round(col.r * 255);
-  const G = Math.round(col.g * 255);
-  const B = Math.round(col.b * 255);
-  const lt = (v, d) => Math.min(v + d, 255);
-  const dk = (v, d) => Math.max(v - d, 0);
+  const R   = Math.round(col.r * 255);
+  const G   = Math.round(col.g * 255);
+  const B   = Math.round(col.b * 255);
+  const lt  = (v, d) => Math.min(v + d, 255);
+  const dk  = (v, d) => Math.max(v - d, 0);
 
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-
+  const c   = document.createElement("canvas");
+  c.width   = c.height = size;
   const ctx = c.getContext("2d");
 
-  const bg = ctx.createRadialGradient(size * 0.36, size * 0.32, 0, size / 2, size / 2, size * 0.56);
-  bg.addColorStop(0.0, `rgb(${lt(R, 65)},${lt(G, 65)},${lt(B, 65)})`);
+  // Spherical base — offset light source gives 3-D depth
+  const bg = ctx.createRadialGradient(
+    size * 0.36, size * 0.32, 0,
+    size / 2,    size / 2,    size * 0.56
+  );
+  bg.addColorStop(0.0,  `rgb(${lt(R,65)},${lt(G,65)},${lt(B,65)})`);
   bg.addColorStop(0.48, `rgb(${R},${G},${B})`);
-  bg.addColorStop(1.0, `rgb(${dk(R, 55)},${dk(G, 55)},${dk(B, 55)})`);
-
+  bg.addColorStop(1.0,  `rgb(${dk(R,55)},${dk(G,55)},${dk(B,55)})`);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, size, size);
 
   if (variant === 0) {
+    // CULTURALVERSE — earthy terrain, landmasses
     for (let i = 0; i < 8; i++) {
       ctx.save();
       ctx.translate(rng() * size, rng() * size);
       ctx.rotate(rng() * Math.PI);
       ctx.beginPath();
-      ctx.ellipse(0, 0, 35 + rng() * 95, 22 + rng() * 65, 0, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${dk(R, 58)},${dk(G, 48)},${dk(B, 68)},${0.22 + rng() * 0.2})`;
+      ctx.ellipse(0, 0, 35 + rng()*95, 22 + rng()*65, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${dk(R,58)},${dk(G,48)},${dk(B,68)},${0.22 + rng()*0.2})`;
       ctx.fill();
       ctx.restore();
     }
-
     for (let i = 0; i < 5; i++) {
       ctx.beginPath();
-      ctx.arc(rng() * size, rng() * size, 8 + rng() * 30, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(${lt(R, 58)},${lt(G, 42)},${lt(B, 18)},0.14)`;
+      ctx.arc(rng()*size, rng()*size, 8 + rng()*30, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${lt(R,58)},${lt(G,42)},${lt(B,18)},0.14)`;
       ctx.fill();
     }
-
-    const haze = ctx.createLinearGradient(0, size * 0.7, 0, size);
-    haze.addColorStop(0, `rgba(${lt(R, 38)},${lt(G, 18)},0,0)`);
-    haze.addColorStop(1, `rgba(${lt(R, 38)},${lt(G, 18)},0,0.17)`);
-
+    const haze = ctx.createLinearGradient(0, size*0.7, 0, size);
+    haze.addColorStop(0, `rgba(${lt(R,38)},${lt(G,18)},0,0)`);
+    haze.addColorStop(1, `rgba(${lt(R,38)},${lt(G,18)},0,0.17)`);
     ctx.fillStyle = haze;
     ctx.fillRect(0, 0, size, size);
+
   } else if (variant === 1) {
+    // LIVING KNOWLEDGE — flowing organic bands, bioluminescent dots
     for (let i = 0; i < 6; i++) {
       const y0 = rng() * size;
       ctx.beginPath();
       ctx.moveTo(0, y0);
-
       for (let x = 0; x <= size; x += 22) {
-        ctx.lineTo(x, y0 + Math.sin(x * 0.014 + rng() * 6) * 30 + Math.sin(x * 0.028 + i) * 14);
+        ctx.lineTo(x, y0 + Math.sin(x*0.014 + rng()*6)*30 + Math.sin(x*0.028 + i)*14);
       }
-
-      ctx.lineWidth = 12 + rng() * 26;
-      ctx.strokeStyle = `rgba(${lt(R, 28)},${lt(G, 52)},${lt(B, 24)},0.13)`;
+      ctx.lineWidth   = 12 + rng() * 26;
+      ctx.strokeStyle = `rgba(${lt(R,28)},${lt(G,52)},${lt(B,24)},0.13)`;
       ctx.stroke();
     }
-
     for (let i = 0; i < 22; i++) {
       ctx.beginPath();
-      ctx.arc(rng() * size, rng() * size, 2 + rng() * 8, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${0.06 + rng() * 0.12})`;
+      ctx.arc(rng()*size, rng()*size, 2 + rng()*8, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${0.06 + rng()*0.12})`;
       ctx.fill();
     }
+
   } else if (variant === 2) {
+    // IKESTAR — icy crystal, star pinpoints, polar cap
     for (let i = 0; i < 18; i++) {
       ctx.beginPath();
-      ctx.moveTo(rng() * size, rng() * size);
-      ctx.lineTo(rng() * size, rng() * size);
-      ctx.strokeStyle = `rgba(255,255,255,${0.06 + rng() * 0.12})`;
-      ctx.lineWidth = 0.5 + rng() * 1.5;
+      ctx.moveTo(rng()*size, rng()*size);
+      ctx.lineTo(rng()*size, rng()*size);
+      ctx.strokeStyle = `rgba(255,255,255,${0.06 + rng()*0.12})`;
+      ctx.lineWidth   = 0.5 + rng() * 1.5;
       ctx.stroke();
     }
-
     for (let i = 0; i < 42; i++) {
       ctx.beginPath();
-      ctx.arc(rng() * size, rng() * size, 0.8 + rng() * 2.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${0.3 + rng() * 0.7})`;
+      ctx.arc(rng()*size, rng()*size, 0.8 + rng()*2.4, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${0.3 + rng()*0.7})`;
       ctx.fill();
     }
-
-    const cap = ctx.createRadialGradient(size / 2, size * 0.06, 0, size / 2, size * 0.1, size * 0.36);
+    const cap = ctx.createRadialGradient(size/2, size*0.06, 0, size/2, size*0.1, size*0.36);
     cap.addColorStop(0, "rgba(255,255,255,0.6)");
     cap.addColorStop(1, "rgba(255,255,255,0)");
-
     ctx.fillStyle = cap;
     ctx.fillRect(0, 0, size, size);
+
   } else {
+    // COSMIC WEAVE / HUB — nebula swirls, star dust
     for (let i = 0; i < 6; i++) {
-      const cx2 = size * (0.18 + rng() * 0.64);
-      const cy2 = size * (0.18 + rng() * 0.64);
-      const sg = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, 58 + rng() * 130);
-
-      sg.addColorStop(0, `rgba(${lt(R, 72)},${lt(G, 72)},${lt(B, 88)},0.3)`);
+      const cx2 = size * (0.18 + rng()*0.64);
+      const cy2 = size * (0.18 + rng()*0.64);
+      const sg  = ctx.createRadialGradient(cx2, cy2, 0, cx2, cy2, 58 + rng()*130);
+      sg.addColorStop(0, `rgba(${lt(R,72)},${lt(G,72)},${lt(B,88)},0.3)`);
       sg.addColorStop(1, `rgba(${R},${G},${B},0)`);
-
       ctx.fillStyle = sg;
       ctx.fillRect(0, 0, size, size);
     }
-
     for (let i = 0; i < 26; i++) {
       ctx.beginPath();
-      ctx.arc(rng() * size, rng() * size, 0.8 + rng() * 2.2, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${0.28 + rng() * 0.72})`;
+      ctx.arc(rng()*size, rng()*size, 0.8 + rng()*2.2, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${0.28 + rng()*0.72})`;
       ctx.fill();
     }
   }
 
-  const spec = ctx.createRadialGradient(size * 0.31, size * 0.25, 0, size * 0.42, size * 0.36, size * 0.24);
+  // Specular highlight — top-left shimmer
+  const spec = ctx.createRadialGradient(
+    size*0.31, size*0.25, 0,
+    size*0.42, size*0.36, size*0.24
+  );
   spec.addColorStop(0, "rgba(255,255,255,0.24)");
   spec.addColorStop(1, "rgba(255,255,255,0)");
-
   ctx.fillStyle = spec;
   ctx.fillRect(0, 0, size, size);
 
-  const limb = ctx.createRadialGradient(size / 2, size / 2, size * 0.38, size / 2, size / 2, size * 0.53);
+  // Limb darkening — dark ring at edge for spherical look
+  const limb = ctx.createRadialGradient(size/2, size/2, size*0.38, size/2, size/2, size*0.53);
   limb.addColorStop(0, "rgba(0,0,0,0)");
   limb.addColorStop(1, "rgba(0,0,0,0.42)");
-
   ctx.fillStyle = limb;
   ctx.fillRect(0, 0, size, size);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-
   return t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ORBIT TEXT RING
+// ORBIT TEXT RING — billboard disc, ticker-crawl animation
+// textBillboard.lookAt(camera) each frame keeps text facing viewer.
+// textSpin.rotation.z decrements for the crawl effect.
 // ─────────────────────────────────────────────────────────────────────────────
 function makeOrbitTextTex(text, accentHex, size = 1024) {
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-
+  const c   = document.createElement("canvas");
+  c.width   = c.height = size;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, size, size);
 
-  const cx = size / 2;
-  const cy = size / 2;
+  const cx  = size / 2;
+  const cy  = size / 2;
   const rad = size * 0.418;
 
-  const sep = "  ·  ";
-  const unit = text + sep;
-  const charPx = size * 0.036;
+  const sep       = "  ·  ";
+  const unit      = text + sep;
+  const charPx    = size * 0.036;
   const perimChar = Math.ceil((Math.PI * 2 * rad) / charPx);
-  const fullText = unit.repeat(Math.ceil(perimChar / unit.length) + 2);
-  const chars = fullText.split("").slice(0, perimChar + 2);
+  const fullText  = unit.repeat(Math.ceil(perimChar / unit.length) + 2);
+  const chars     = fullText.split("").slice(0, perimChar + 2);
 
-  ctx.font = `600 ${Math.round(size * 0.035)}px 'DM Sans', sans-serif`;
-  ctx.fillStyle = accentHex;
-  ctx.shadowColor = accentHex;
-  ctx.shadowBlur = size * 0.02;
-  ctx.textAlign = "center";
+  ctx.font         = `600 ${Math.round(size * 0.035)}px 'DM Sans', sans-serif`;
+  ctx.fillStyle    = accentHex;
+  ctx.shadowColor  = accentHex;
+  ctx.shadowBlur   = size * 0.02;
+  ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
 
   chars.forEach((ch, i) => {
     const angle = ((i / chars.length) * Math.PI * 2) - Math.PI / 2;
-
     ctx.save();
     ctx.translate(cx + Math.cos(angle) * rad, cy + Math.sin(angle) * rad);
-    ctx.rotate(angle + Math.PI / 2);
+    ctx.rotate(angle + Math.PI / 2); // tangent direction
     ctx.fillText(ch, 0, 0);
     ctx.restore();
   });
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-
   return t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CARD INFO TEXTURE
+// CARD TEXTURE — fully composited single canvas
+// One plane, one texture = zero z-fighting / zero flickering.
+// Includes: dark glass bg, accent border, icon, title, description, tags, hint.
 // ─────────────────────────────────────────────────────────────────────────────
-function makeCardInfoTex(app) {
-  const W = 1024;
-  const H = 360;
-
-  const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-
+function makeCardTex(app, appTex) {
+  const W = 1024, H = 680;
+  const c   = document.createElement("canvas");
+  c.width   = W; c.height = H;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
   const hex = "#" + new THREE.Color(app.color).getHexString();
 
-  ctx.fillStyle = hex;
-  ctx.fillRect(0, 0, W, 5);
-
-  ctx.fillStyle = "rgba(212,174,90,0.9)";
-  ctx.font = "600 24px 'DM Sans', sans-serif";
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  ctx.fillText("IKEVERSE APP", 40, 32);
-
-  ctx.fillStyle = "rgba(228,241,255,0.98)";
-  ctx.font = "800 52px 'DM Sans', sans-serif";
-  ctx.textBaseline = "alphabetic";
-  wrapText(ctx, app.title, 40, 126, W - 80, 58);
-
-  roundRect(ctx, 40, 208, 222, 42, 16);
-  ctx.fillStyle = hex + "28";
+  // Dark glass background
+  roundRect(ctx, 0, 0, W, H, 40);
+  ctx.fillStyle = "rgba(4,9,22,0.94)";
   ctx.fill();
-  ctx.strokeStyle = hex + "66";
-  ctx.lineWidth = 1.5;
+
+  // Accent border
+  roundRect(ctx, 2, 2, W-4, H-4, 38);
+  ctx.strokeStyle = hex + "55";
+  ctx.lineWidth   = 2.5;
   ctx.stroke();
 
+  // Top accent stripe
+  roundRect(ctx, 0, 0, W, 6, 40);
   ctx.fillStyle = hex;
-  ctx.font = "700 21px 'DM Sans', sans-serif";
-  ctx.textAlign = "left";
+  ctx.fill();
+
+  // App icon — draw from loaded image, else tinted circle
+  const iconSize = 118, iconX = 40, iconY = 28;
+  if (appTex && appTex.image && appTex.image.complete && appTex.image.naturalWidth > 0) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(appTex.image, iconX, iconY, iconSize, iconSize);
+    ctx.restore();
+  } else {
+    ctx.beginPath();
+    ctx.arc(iconX + iconSize/2, iconY + iconSize/2, iconSize/2, 0, Math.PI*2);
+    ctx.fillStyle   = hex + "33";
+    ctx.fill();
+    ctx.strokeStyle = hex + "88";
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+  }
+
+  // Status badge
+  const bx = iconX + iconSize + 20, by2 = 44;
+  roundRect(ctx, bx, by2, 210, 38, 19);
+  ctx.fillStyle   = hex + "22"; ctx.fill();
+  ctx.strokeStyle = hex + "66"; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Status dot
+  ctx.beginPath();
+  ctx.arc(bx + 18, by2 + 19, 5, 0, Math.PI*2);
+  ctx.fillStyle = hex; ctx.fill();
+
+  ctx.fillStyle    = hex;
+  ctx.font         = "600 20px 'DM Sans', sans-serif";
+  ctx.textAlign    = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText(app.status.toUpperCase(), 58, 229);
+  ctx.fillText(app.status.toUpperCase(), bx + 32, by2 + 19);
+
+  // Eyebrow
+  ctx.fillStyle    = "rgba(212,174,90,0.88)";
+  ctx.font         = "600 22px 'DM Sans', sans-serif";
+  ctx.textBaseline = "top";
+  ctx.fillText("IKEVERSE  ·  APP PORTAL", bx, by2 + 52);
+
+  // Title
+  ctx.fillStyle    = "rgba(228,241,255,0.98)";
+  ctx.font         = "800 52px 'DM Sans', sans-serif";
+  ctx.textBaseline = "alphabetic";
+  wrapText(ctx, app.title, 40, 222, W - 60, 60);
+
+  // Divider
+  ctx.fillStyle = hex + "33";
+  ctx.fillRect(40, 288, W - 80, 1);
+
+  // Description
+  ctx.fillStyle    = "rgba(174,194,228,0.82)";
+  ctx.font         = "400 26px 'DM Sans', sans-serif";
+  ctx.textBaseline = "top";
+  wrapText(ctx, app.description, 40, 306, W - 80, 38);
+
+  // Tag pills
+  ctx.font = "500 20px 'DM Sans', sans-serif";
+  let tx = 40, ty = 534;
+  app.tags.slice(0, 4).forEach((tag) => {
+    const tw = ctx.measureText(tag).width + 30;
+    roundRect(ctx, tx, ty, tw, 34, 17);
+    ctx.fillStyle   = "rgba(255,255,255,0.06)"; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle    = "rgba(210,228,255,0.72)";
+    ctx.textBaseline = "middle";
+    ctx.fillText(tag, tx + 15, ty + 17);
+    tx += tw + 12;
+    if (tx > W - 120) { tx = 40; ty += 44; }
+  });
+
+  // Launch hint
+  ctx.fillStyle    = "rgba(140,160,200,0.46)";
+  ctx.font         = "400 20px 'DM Sans', sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Click again to launch →", 40, H - 22);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-
   return t;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUB TITLE
+// HUB TITLE — UnifrakturMaguntia (Old English), large with gold glow
 // ─────────────────────────────────────────────────────────────────────────────
 function makeHubTitleTex(text) {
-  const W = 920;
-  const H = 170;
-
-  const c = document.createElement("canvas");
-  c.width = W;
-  c.height = H;
-
+  const W = 1100, H = 220;
+  const c   = document.createElement("canvas");
+  c.width   = W; c.height = H;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
-  ctx.shadowColor = "rgba(84,198,238,0.65)";
-  ctx.shadowBlur = 30;
-  ctx.fillStyle = "rgba(212,174,90,0.97)";
-  ctx.font = "900 76px 'Orbitron', monospace";
-  ctx.textAlign = "center";
+  // Warm gold outer glow pass
+  ctx.shadowColor  = "rgba(212,174,90,0.72)";
+  ctx.shadowBlur   = 38;
+  ctx.fillStyle    = "rgba(218,181,88,0.0)";
+  ctx.font         = "120px 'UnifrakturMaguntia', serif";
+  ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, W / 2, H / 2);
+  ctx.fillText(text, W/2, H/2);
 
+  // Cyan inner glow pass
+  ctx.shadowColor = "rgba(84,198,238,0.40)";
+  ctx.shadowBlur  = 16;
+  ctx.fillStyle   = "rgba(218,181,88,0.0)";
+  ctx.fillText(text, W/2, H/2);
+
+  // Main gold fill
+  ctx.shadowBlur  = 8;
+  ctx.fillStyle   = "rgba(218,181,88,0.98)";
+  ctx.fillText(text, W/2, H/2);
+
+  // Fade underline accent
   ctx.shadowBlur = 0;
-  ctx.fillStyle = "rgba(84,198,238,0.48)";
-  ctx.fillRect(W / 2 - 84, H / 2 + 44, 168, 2);
+  const uw = ctx.measureText(text).width * 0.60;
+  const ug = ctx.createLinearGradient(W/2 - uw/2, 0, W/2 + uw/2, 0);
+  ug.addColorStop(0,   "rgba(84,198,238,0)");
+  ug.addColorStop(0.5, "rgba(84,198,238,0.52)");
+  ug.addColorStop(1,   "rgba(84,198,238,0)");
+  ctx.fillStyle = ug;
+  ctx.fillRect(W/2 - uw/2, H/2 + 60, uw, 2);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-
   return t;
 }
 
@@ -615,44 +693,40 @@ function makeLights() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BACKGROUND
+// BACKGROUND — three star layers + spiral galaxies + vapor + nebulas
 // ─────────────────────────────────────────────────────────────────────────────
 function addStars(count, minR, maxR, size, opacity, colors) {
   const pos = new Float32Array(count * 3);
   const col = new Float32Array(count * 3);
 
   for (let i = 0; i < count; i++) {
-    const r = minR + Math.random() * (maxR - minR);
+    const r     = minR + Math.random() * (maxR - minR);
     const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(Math.random() * 2 - 1);
+    const phi   = Math.acos(Math.random() * 2 - 1);
 
-    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    pos[i * 3 + 1] = r * Math.cos(phi) * 0.70;
-    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = r * Math.cos(phi) * 0.70;
+    pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
 
-    const cl = colors[Math.floor(Math.random() * colors.length)];
-
-    col[i * 3] = cl.r;
-    col[i * 3 + 1] = cl.g;
-    col[i * 3 + 2] = cl.b;
+    const cl   = colors[Math.floor(Math.random() * colors.length)];
+    col[i*3]   = cl.r;
+    col[i*3+1] = cl.g;
+    col[i*3+2] = cl.b;
   }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  geo.setAttribute("color",    new THREE.BufferAttribute(col, 3));
 
-  bgGroup.add(new THREE.Points(
-    geo,
-    new THREE.PointsMaterial({
-      size,
-      transparent: true,
-      opacity,
-      depthWrite: false,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: true
-    })
-  ));
+  bgGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({
+    size,
+    transparent: true,
+    opacity,
+    depthWrite: false,
+    vertexColors: true,
+    blending: THREE.AdditiveBlending,
+    sizeAttenuation: true
+  })));
 }
 
 function buildGalaxy(starCount, arms, spreadFactor, maxR) {
@@ -660,89 +734,109 @@ function buildGalaxy(starCount, arms, spreadFactor, maxR) {
   const col = new Float32Array(starCount * 3);
 
   for (let i = 0; i < starCount; i++) {
-    const arm = i % arms;
-    const r = Math.pow(Math.random(), 0.55) * maxR;
-    const spin = r * 0.50;
+    const arm    = i % arms;
+    const r      = Math.pow(Math.random(), 0.55) * maxR;
+    const spin   = r * 0.50;
     const branch = (arm / arms) * Math.PI * 2;
     const scatter = (Math.random() - 0.5) * Math.max(r * spreadFactor, 1.5);
-    const angle = branch + spin;
+    const angle  = branch + spin;
 
-    pos[i * 3] = Math.cos(angle) * r + Math.cos(angle + 1.5708) * scatter;
-    pos[i * 3 + 1] = (Math.random() - 0.5) * Math.max(r * 0.05, 0.4);
-    pos[i * 3 + 2] = Math.sin(angle) * r + Math.sin(angle + 1.5708) * scatter;
+    pos[i*3]   = Math.cos(angle) * r + Math.cos(angle + 1.5708) * scatter;
+    pos[i*3+1] = (Math.random() - 0.5) * Math.max(r * 0.05, 0.4);
+    pos[i*3+2] = Math.sin(angle) * r + Math.sin(angle + 1.5708) * scatter;
 
     const frac = r / maxR;
-
-    col[i * 3] = THREE.MathUtils.lerp(1.0, 0.44, frac);
-    col[i * 3 + 1] = THREE.MathUtils.lerp(0.88, 0.60, frac);
-    col[i * 3 + 2] = THREE.MathUtils.lerp(0.52, 1.0, frac);
+    col[i*3]   = THREE.MathUtils.lerp(1.0, 0.44, frac);
+    col[i*3+1] = THREE.MathUtils.lerp(0.88, 0.60, frac);
+    col[i*3+2] = THREE.MathUtils.lerp(0.52, 1.0,  frac);
   }
 
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-
+  geo.setAttribute("color",    new THREE.BufferAttribute(col, 3));
   return geo;
 }
 
 function makeBackground() {
+  // Layer 1 — distant blue-white stars
   addStars(2800, 90, 170, 0.065, 0.88, [
     new THREE.Color(0x9ed8ff),
     new THREE.Color(0xffffff),
     new THREE.Color(0xc2e4ff)
   ]);
 
+  // Layer 2 — mid-field warm/purple stars
   addStars(1000, 52, 95, 0.105, 0.65, [
     new THREE.Color(0xf6e8cc),
     new THREE.Color(0xb48cff),
     new THREE.Color(0x88ccff)
   ]);
 
-  const galGeo = buildGalaxy(8000, 2, 0.28, 48);
-  const galPts = new THREE.Points(
-    galGeo,
-    new THREE.PointsMaterial({
-      size: 0.13,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.56,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: true
-    })
-  );
+  // Layer 3 — close sparkle pinpoints (brighter, higher contrast)
+  addStars(340, 22, 52, 0.16, 0.72, [
+    new THREE.Color(0xffffff),
+    new THREE.Color(0xddf0ff),
+    new THREE.Color(0xffe8cc)
+  ]);
 
+  // ── MAIN SPIRAL GALAXY ────────────────────────────────────────────────────
+  const galGeo = buildGalaxy(8000, 2, 0.28, 48);
+  const galPts = new THREE.Points(galGeo, new THREE.PointsMaterial({
+    size: 0.13, vertexColors: true, transparent: true, opacity: 0.56,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  }));
   galPts.position.set(-34, -18, -82);
   galPts.rotation.x = Math.PI * 0.18;
   galPts.rotation.z = Math.PI * 0.07;
   bgGroup.add(galPts);
 
+  // Galaxy core glow
   const galCore = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: makeRadialTex(255, 205, 140, 0.48, 256),
-    transparent: true,
-    opacity: 0.72,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
+    map: makeRadialTex(255, 205, 140, 0.52, 256),
+    transparent: true, opacity: 0.78,
+    depthWrite: false, blending: THREE.AdditiveBlending
   }));
-
   galCore.position.set(-34, -18, -82);
-  galCore.scale.set(18, 12, 1);
+  galCore.scale.set(20, 13, 1);
   bgGroup.add(galCore);
 
-  const gal2Geo = buildGalaxy(2200, 1, 0.5, 22);
-  const gal2Pts = new THREE.Points(
-    gal2Geo,
-    new THREE.PointsMaterial({
-      size: 0.09,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.38,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      sizeAttenuation: true
-    })
-  );
+  // ── GALAXY VAPOR / SMOKE CLOUDS — animated, layered ──────────────────────
+  const vaporDefs = [
+    { pos: [-34,-18,-82], sc: [58,30,1], r:120, g:100, b:200 },
+    { pos: [-44,-22,-80], sc: [42,23,1], r:80,  g:60,  b:180 },
+    { pos: [-26,-14,-85], sc: [40,21,1], r:160, g:130, b:80  },
+    { pos: [-34,-10,-78], sc: [50,19,1], r:100, g:80,  b:220 },
+    { pos: [-20,-24,-88], sc: [38,25,1], r:80,  g:120, b:200 },
+    { pos: [-50,-18,-86], sc: [44,21,1], r:140, g:100, b:60  },
+    { pos: [-30,-28,-84], sc: [36,18,1], r:60,  g:80,  b:160 }
+  ];
 
+  const vaporSprites = [];
+
+  vaporDefs.forEach(({ pos, sc, r, g, b }, i) => {
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: makeVaporTex(r, g, b, 512),
+      transparent: true,
+      opacity: 0.72 + (i % 3) * 0.08,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    }));
+    spr.position.set(...pos);
+    spr.scale.set(...sc);
+    spr.userData.phase  = i * 1.37;
+    spr.userData.baseOp = 0.62 + (i % 3) * 0.10;
+    bgGroup.add(spr);
+    vaporSprites.push(spr);
+  });
+
+  bgGroup.userData.vaporSprites = vaporSprites;
+
+  // ── SECOND GALAXY (elliptical, distant) ───────────────────────────────────
+  const gal2Geo = buildGalaxy(2200, 1, 0.5, 22);
+  const gal2Pts = new THREE.Points(gal2Geo, new THREE.PointsMaterial({
+    size: 0.09, vertexColors: true, transparent: true, opacity: 0.38,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  }));
   gal2Pts.position.set(55, 10, -105);
   gal2Pts.rotation.x = Math.PI * 0.06;
   gal2Pts.rotation.y = Math.PI * 0.3;
@@ -750,47 +844,75 @@ function makeBackground() {
 
   const gal2Core = new THREE.Sprite(new THREE.SpriteMaterial({
     map: makeRadialTex(180, 160, 240, 0.35, 128),
-    transparent: true,
-    opacity: 0.5,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
+    transparent: true, opacity: 0.50,
+    depthWrite: false, blending: THREE.AdditiveBlending
   }));
-
   gal2Core.position.set(55, 10, -105);
   gal2Core.scale.set(10, 7, 1);
   bgGroup.add(gal2Core);
 
+  // Vapor for galaxy 2
+  const v2 = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeVaporTex(140, 100, 220, 512),
+    transparent: true, opacity: 0.55,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  v2.position.set(55, 10, -105);
+  v2.scale.set(30, 17, 1);
+  bgGroup.add(v2);
+
+  // ── THIRD GALAXY (barred spiral, high) ───────────────────────────────────
+  const gal3Geo = buildGalaxy(3500, 4, 0.35, 30);
+  const gal3Pts = new THREE.Points(gal3Geo, new THREE.PointsMaterial({
+    size: 0.08, vertexColors: true, transparent: true, opacity: 0.28,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  }));
+  gal3Pts.position.set(8, 30, -120);
+  gal3Pts.rotation.x = Math.PI * 0.40;
+  gal3Pts.rotation.y = Math.PI * 0.15;
+  bgGroup.add(gal3Pts);
+
+  const gal3Core = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeRadialTex(200, 220, 255, 0.25, 128),
+    transparent: true, opacity: 0.42,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  gal3Core.position.set(8, 30, -120);
+  gal3Core.scale.set(8, 5, 1);
+  bgGroup.add(gal3Core);
+
+  // ── MILKY WAY BAND ────────────────────────────────────────────────────────
   [
-    { x: 0, y: -22, z: -60, w: 160, h: 28, r: 88,  g: 110, b: 200, a: 0.10 },
-    { x: 0, y: -16, z: -58, w: 140, h: 18, r: 120, g: 90,  b: 200, a: 0.07 }
+    { x: 0, y:-22, z:-60, w:165, h:30, r:88,  g:110, b:200, a:0.10 },
+    { x: 0, y:-16, z:-58, w:145, h:18, r:120, g:90,  b:200, a:0.07 },
+    { x: 0, y:-19, z:-62, w:130, h:14, r:160, g:140, b:255, a:0.06 }
   ].forEach(({ x, y, z, w, h, r, g, b, a }) => {
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({
       map: makeRadialTex(r, g, b, a, 512),
-      transparent: true,
-      opacity: 1,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
+      transparent: true, opacity: 1,
+      depthWrite: false, blending: THREE.AdditiveBlending
     }));
-
     spr.position.set(x, y, z);
     spr.scale.set(w, h, 1);
     bgGroup.add(spr);
   });
 
+  // ── NEBULA CLOUDS ─────────────────────────────────────────────────────────
   [
-    { rgb: [44, 122, 230],  alpha: 0.18, pos: [-22, 15, -42], w: 42, h: 24 },
-    { rgb: [152, 76, 244],  alpha: 0.15, pos: [28, 9, -48],   w: 36, h: 21 },
-    { rgb: [48, 198, 168],  alpha: 0.11, pos: [6, -6, -34],    w: 48, h: 26 },
-    { rgb: [220, 120, 60],  alpha: 0.08, pos: [-50, 5, -90],   w: 55, h: 30 }
+    { rgb: [44,  122, 230], alpha: 0.18, pos: [-22, 15, -42], w: 42, h: 24 },
+    { rgb: [152, 76,  244], alpha: 0.15, pos: [28,  9,  -48], w: 36, h: 21 },
+    { rgb: [48,  198, 168], alpha: 0.11, pos: [6,   -6, -34], w: 48, h: 26 },
+    { rgb: [220, 120, 60],  alpha: 0.08, pos: [-50, 5,  -90], w: 55, h: 30 },
+    { rgb: [60,  100, 220], alpha: 0.09, pos: [18,  20, -55], w: 38, h: 20 },
+    { rgb: [200, 80,  160], alpha: 0.07, pos: [-8, -10, -46], w: 44, h: 22 },
+    { rgb: [80,  200, 220], alpha: 0.07, pos: [42,  -8, -72], w: 50, h: 24 },
+    { rgb: [220, 160, 60],  alpha: 0.06, pos: [-14, 25, -65], w: 40, h: 20 }
   ].forEach(({ rgb: [r, g, b], alpha, pos, w, h }) => {
     const spr = new THREE.Sprite(new THREE.SpriteMaterial({
       map: makeRadialTex(r, g, b, alpha, 512),
-      transparent: true,
-      opacity: 1,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
+      transparent: true, opacity: 1,
+      depthWrite: false, blending: THREE.AdditiveBlending
     }));
-
     spr.position.set(...pos);
     spr.scale.set(w, h, 1);
     bgGroup.add(spr);
@@ -798,20 +920,16 @@ function makeBackground() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ENVIRONMENT
+// ENVIRONMENT — floor, orbit guide rings, dust band
 // ─────────────────────────────────────────────────────────────────────────────
 function makeEnv() {
   const floor = new THREE.Mesh(
     new THREE.CircleGeometry(12.5, 80),
     new THREE.MeshBasicMaterial({
-      color: 0x0b172e,
-      transparent: true,
-      opacity: 0.44,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
+      color: 0x0b172e, transparent: true, opacity: 0.44,
+      blending: THREE.AdditiveBlending, depthWrite: false
     })
   );
-
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.5;
   envGroup.add(floor);
@@ -825,7 +943,6 @@ function makeEnv() {
         opacity: i === 1 ? 0.17 : 0.11
       })
     );
-
     ring.rotation.x = Math.PI / 2;
     ring.position.y = -0.44;
     envGroup.add(ring);
@@ -837,65 +954,50 @@ function makeEnv() {
   for (let i = 0; i < dustCount; i++) {
     const a = Math.random() * Math.PI * 2;
     const r = 5.0 + Math.random() * 5.2;
-
-    dPos[i * 3] = Math.cos(a) * r;
-    dPos[i * 3 + 1] = -0.2 + (Math.random() - 0.5) * 0.13;
-    dPos[i * 3 + 2] = Math.sin(a) * r;
+    dPos[i*3]   = Math.cos(a) * r;
+    dPos[i*3+1] = -0.2 + (Math.random() - 0.5) * 0.13;
+    dPos[i*3+2] = Math.sin(a) * r;
   }
 
   const dGeo = new THREE.BufferGeometry();
   dGeo.setAttribute("position", new THREE.BufferAttribute(dPos, 3));
 
-  const dust = new THREE.Points(
-    dGeo,
-    new THREE.PointsMaterial({
-      color: 0x52b4ff,
-      size: 0.030,
-      opacity: 0.17,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
-    })
-  );
+  const dust = new THREE.Points(dGeo, new THREE.PointsMaterial({
+    color: 0x52b4ff, size: 0.030, opacity: 0.17, transparent: true,
+    depthWrite: false, blending: THREE.AdditiveBlending
+  }));
 
   envGroup.userData.dust = dust;
   envGroup.add(dust);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUB
+// HUB — sphere (planet tex + icon decal) + 3 rings + Old English title
 // ─────────────────────────────────────────────────────────────────────────────
 function makeHub() {
-  const grp = new THREE.Group();
+  const grp    = new THREE.Group();
   const hubTex = getTex(HUB_IMAGE);
 
   const base = new THREE.Mesh(
     new THREE.CylinderGeometry(1.80, 2.20, 0.50, 56),
-    new THREE.MeshStandardMaterial({
-      color: 0x0c1724,
-      metalness: 0.64,
-      roughness: 0.32
-    })
+    new THREE.MeshStandardMaterial({ color: 0x0c1724, metalness: 0.64, roughness: 0.32 })
   );
-
   base.position.y = 0.12;
 
-  const hubCol = new THREE.Color(0x4488bb);
+  const hubCol       = new THREE.Color(0x4488bb);
   const hubPlanetTex = makePlanetTex(hubCol, 4, 512);
 
   const sphere = new THREE.Mesh(
     new THREE.SphereGeometry(1.24, 64, 64),
     new THREE.MeshPhysicalMaterial({
       map: hubPlanetTex,
-      emissive: 0x18476e,
-      emissiveIntensity: 0.18,
-      metalness: 0.02,
-      roughness: 0.28
+      emissive: 0x18476e, emissiveIntensity: 0.18,
+      metalness: 0.02, roughness: 0.28
     })
   );
-
   sphere.position.y = 1.8;
 
+  // Icon decal — slightly larger sphere wraps icon on top of planet texture
   const hubDecal = new THREE.Mesh(
     new THREE.SphereGeometry(1.255, 48, 48),
     new THREE.MeshBasicMaterial({
@@ -905,153 +1007,128 @@ function makeHub() {
       depthWrite: false
     })
   );
-
   hubDecal.position.y = 1.8;
 
   const ringA = new THREE.Mesh(
     new THREE.TorusGeometry(2.48, 0.026, 20, 180),
-    new THREE.MeshBasicMaterial({
-      color: 0x54c6ee,
-      transparent: true,
-      opacity: 0.18
-    })
+    new THREE.MeshBasicMaterial({ color: 0x54c6ee, transparent: true, opacity: 0.18 })
   );
-
   ringA.position.y = 1.8;
   ringA.rotation.x = Math.PI / 2;
 
   const ringB = new THREE.Mesh(
     new THREE.TorusGeometry(2.04, 0.018, 16, 160),
-    new THREE.MeshBasicMaterial({
-      color: 0xd4ae5a,
-      transparent: true,
-      opacity: 0.15
-    })
+    new THREE.MeshBasicMaterial({ color: 0xd4ae5a, transparent: true, opacity: 0.15 })
   );
-
   ringB.position.y = 1.8;
   ringB.rotation.x = Math.PI / 2;
   ringB.rotation.z = THREE.MathUtils.degToRad(32);
 
   const ringC = new THREE.Mesh(
     new THREE.TorusGeometry(1.62, 0.014, 14, 140),
-    new THREE.MeshBasicMaterial({
-      color: 0x9272f5,
-      transparent: true,
-      opacity: 0.12
-    })
+    new THREE.MeshBasicMaterial({ color: 0x9272f5, transparent: true, opacity: 0.12 })
   );
-
   ringC.position.y = 1.8;
   ringC.rotation.x = Math.PI / 2;
   ringC.rotation.z = THREE.MathUtils.degToRad(-38);
 
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({
     map: makeRadialTex(84, 198, 238, 0.14, 256),
-    transparent: true,
-    opacity: 1,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
+    transparent: true, opacity: 1,
+    depthWrite: false, blending: THREE.AdditiveBlending
   }));
-
   glow.position.y = 1.8;
   glow.scale.set(4.8, 4.8, 1);
 
+  // Title uses UnifrakturMaguntia via makeHubTitleTex — larger sprite
   const title = new THREE.Sprite(new THREE.SpriteMaterial({
     map: makeHubTitleTex(HUB_NAME),
-    transparent: true,
-    opacity: 0.95,
+    transparent: true, opacity: 0.96,
     depthWrite: false
   }));
-
-  title.position.set(0, 3.58, 0);
-  title.scale.set(3.50, 0.64, 1);
+  title.position.set(0, 3.78, 0);
+  title.scale.set(4.40, 0.90, 1);
 
   grp.add(base, glow, ringA, ringB, ringC, sphere, hubDecal, title);
   world.add(grp);
 
   Object.assign(state.hub, {
-    group: grp,
-    base,
-    sphere,
-    hubDecal,
-    ringA,
-    ringB,
-    ringC,
-    glow,
-    title
+    group: grp, base, sphere, hubDecal,
+    ringA, ringB, ringC, glow, title
   });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // APP NODES
+//
+// Per-node structure:
+//   group
+//     ├─ ped              pedestal
+//     ├─ track            orbit torus
+//     ├─ selRing          selection ring (floor, fades in)
+//     ├─ orbPivot         bobs vertically
+//     │    ├─ orb         planet sphere (procedural tex)
+//     │    ├─ decal       slightly-larger sphere, app icon overlay
+//     │    ├─ atm         atmospheric halo sprite
+//     │    └─ textBillboard  Group → lookAt(camera) each frame
+//     │         └─ textSpin  Group → rotation.z ticker crawl
+//     │              └─ textRing  CircleGeometry disc
+//     └─ cardGrp          SINGLE plane, opacity reveal (NO bob, NO flicker)
 // ─────────────────────────────────────────────────────────────────────────────
 function makeNodes() {
   APPS.forEach((app, idx) => {
     const group = new THREE.Group();
-    group.userData = {
-      appId: app.id,
-      angle: (idx / APPS.length) * Math.PI * 2
-    };
+    group.userData = { appId: app.id, angle: (idx / APPS.length) * Math.PI * 2 };
 
-    const col = new THREE.Color(app.color);
-    const hex = "#" + col.getHexString();
+    const col  = new THREE.Color(app.color);
+    const hex  = "#" + col.getHexString();
     const appTex = getTex(app.image);
     const colR = Math.round(col.r * 255);
     const colG = Math.round(col.g * 255);
     const colB = Math.round(col.b * 255);
 
+    // Pedestal
     const ped = new THREE.Mesh(
       new THREE.CylinderGeometry(0.82, 1.0, 0.45, 40),
-      new THREE.MeshStandardMaterial({
-        color: 0x0d1726,
-        metalness: 0.70,
-        roughness: 0.26
-      })
+      new THREE.MeshStandardMaterial({ color: 0x0d1726, metalness: 0.70, roughness: 0.26 })
     );
 
+    // Orbit track ring
     const track = new THREE.Mesh(
       new THREE.TorusGeometry(1.48, 0.011, 14, 160),
-      new THREE.MeshBasicMaterial({
-        color: app.color,
-        transparent: true,
-        opacity: 0.09
-      })
+      new THREE.MeshBasicMaterial({ color: app.color, transparent: true, opacity: 0.09 })
     );
-
     track.rotation.x = Math.PI / 2;
     track.position.y = 1.34;
 
+    // Selection ring (floor level, fades in on select)
     const selRing = new THREE.Mesh(
       new THREE.TorusGeometry(1.08, 0.010, 14, 120),
       new THREE.MeshBasicMaterial({
-        color: app.color,
-        transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
+        color: app.color, transparent: true, opacity: 0,
+        blending: THREE.AdditiveBlending, depthWrite: false
       })
     );
-
     selRing.rotation.x = Math.PI / 2;
     selRing.position.y = 0.02;
 
+    // orbPivot — bobs up/down
     const orbPivot = new THREE.Group();
     orbPivot.position.y = 1.34;
 
+    // Planet sphere — procedural surface texture
     const planetTex = makePlanetTex(col, idx, 512);
-
     const orb = new THREE.Mesh(
       new THREE.SphereGeometry(0.82, 64, 64),
       new THREE.MeshPhysicalMaterial({
         map: planetTex,
         emissive: col.clone().multiplyScalar(0.07),
         emissiveIntensity: 0.25,
-        roughness: 0.40,
-        metalness: 0.04
+        roughness: 0.40, metalness: 0.04
       })
     );
 
+    // Icon decal — slightly-larger sphere composites the app icon on top
     const decal = new THREE.Mesh(
       new THREE.SphereGeometry(0.836, 48, 48),
       new THREE.MeshBasicMaterial({
@@ -1062,111 +1139,63 @@ function makeNodes() {
       })
     );
 
+    // Atmospheric halo
     const atm = new THREE.Sprite(new THREE.SpriteMaterial({
       map: makeRadialTex(colR, colG, colB, 0.22, 256),
-      transparent: true,
-      opacity: 0.38,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending
+      transparent: true, opacity: 0.38,
+      depthWrite: false, blending: THREE.AdditiveBlending
     }));
-
     atm.scale.set(2.48, 2.48, 1);
 
+    // Text ring: billboard (lookAt camera) + inner spin group (ticker crawl)
     const textBillboard = new THREE.Group();
-    const textSpin = new THREE.Group();
-
-    const textRing = new THREE.Mesh(
+    const textSpin      = new THREE.Group();
+    const textRing      = new THREE.Mesh(
       new THREE.CircleGeometry(2.02, 128),
       new THREE.MeshBasicMaterial({
         map: makeOrbitTextTex(app.title, hex),
-        transparent: true,
-        opacity: 0.82,
-        side: THREE.DoubleSide,
-        depthWrite: false
+        transparent: true, opacity: 0.82,
+        side: THREE.DoubleSide, depthWrite: false
       })
     );
-
     textSpin.add(textRing);
     textBillboard.add(textSpin);
     orbPivot.add(orb, decal, atm, textBillboard);
 
+    // ── CARD — single composited plane, no z-fighting ─────────────────────
+    // depthTest:false + depthWrite:false + renderOrder:10 = always draws clean
     const cardGrp = new THREE.Group();
-    cardGrp.position.set(0, 2.72, 0);
+    cardGrp.position.set(0, 3.10, 0);
     cardGrp.visible = false;
 
-    const cardBg = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.52, 1.78),
-      new THREE.MeshPhysicalMaterial({
-        color: 0x060c1a,
-        transparent: true,
-        opacity: 0,
-        roughness: 0.18,
-        metalness: 0.02
-      })
-    );
-
-    const cardBorder = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.56, 1.82),
+    const cardPanel = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.80, 1.86),
       new THREE.MeshBasicMaterial({
-        color: app.color,
+        map:        makeCardTex(app, appTex),
         transparent: true,
-        opacity: 0,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
+        opacity:     0,
+        depthTest:   false,
+        depthWrite:  false,
+        side: THREE.FrontSide
       })
     );
+    cardPanel.renderOrder    = 10;
+    cardPanel.userData.appId = app.id;
 
-    cardBorder.position.z = -0.002;
-
-    const cardImg = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.92, 0.90),
-      new THREE.MeshBasicMaterial({
-        color: appTex ? 0xffffff : app.color,
-        map: appTex || null,
-        transparent: true,
-        opacity: 0
-      })
-    );
-
-    cardImg.position.y = 0.24;
-
-    const cardInfo = new THREE.Mesh(
-      new THREE.PlaneGeometry(2.32, 0.60),
-      new THREE.MeshBasicMaterial({
-        map: makeCardInfoTex(app),
-        transparent: true,
-        opacity: 0
-      })
-    );
-
-    cardInfo.position.y = -0.52;
-
-    cardGrp.add(cardBorder, cardBg, cardImg, cardInfo);
+    cardGrp.add(cardPanel);
     group.add(ped, track, selRing, orbPivot, cardGrp);
 
-    [orb, ped, decal, cardBg, cardImg, cardInfo].forEach((m) => {
+    // Pickable meshes (raycaster targets)
+    [orb, ped, decal, cardPanel].forEach((m) => {
       m.userData.appId = app.id;
       state.pickable.push(m);
     });
 
     state.nodes.set(app.id, {
-      app,
-      group,
-      ped,
-      track,
-      selRing,
-      orbPivot,
-      orb,
-      decal,
-      atm,
-      textBillboard,
-      textSpin,
-      textRing,
-      cardGrp,
-      cardBg,
-      cardBorder,
-      cardImg,
-      cardInfo,
+      app, group, ped, track, selRing,
+      orbPivot, orb, decal, atm,
+      textBillboard, textSpin, textRing,
+      cardGrp, cardPanel,
       accentColor: col
     });
 
@@ -1185,29 +1214,25 @@ function placeNodes() {
     if (!nd) return;
 
     const angle = nd.group.userData.angle;
-
     nd.group.position.x = Math.cos(angle) * cfg.orbitR;
     nd.group.position.z = Math.sin(angle) * cfg.orbitR * cfg.ellipseZ;
 
     const s = cfg.nodeScale;
-
     nd.orbPivot.scale.setScalar(s);
     nd.track.scale.setScalar(s);
     nd.selRing.scale.setScalar(s);
-    nd.cardGrp.scale.setScalar(s * 0.93);
+    nd.cardGrp.scale.setScalar(s * 0.95);
   });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CONNECTIONS
+// CONNECTIONS — dashed CatmullRom curves hub→node
 // ─────────────────────────────────────────────────────────────────────────────
 function makeConnections() {
   while (connGrp.children.length) {
     const c = connGrp.children[0];
-
     c.geometry?.dispose();
     c.material?.dispose();
-
     connGrp.remove(c);
   }
 
@@ -1222,31 +1247,18 @@ function makeConnections() {
 
     const curve = new THREE.CatmullRomCurve3([
       hub.clone(),
-      new THREE.Vector3(
-        hub.x * 0.3 + end.x * 0.32,
-        2.48,
-        hub.z * 0.3 + end.z * 0.32
-      ),
-      new THREE.Vector3(
-        hub.x * 0.25 + end.x * 0.74,
-        2.14,
-        hub.z * 0.25 + end.z * 0.74
-      ),
+      new THREE.Vector3(hub.x*0.3 + end.x*0.32, 2.48, hub.z*0.3 + end.z*0.32),
+      new THREE.Vector3(hub.x*0.25 + end.x*0.74, 2.14, hub.z*0.25 + end.z*0.74),
       end
     ]);
 
-    const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(48));
-    const mat = new THREE.LineDashedMaterial({
-      color: app.color,
-      transparent: true,
-      opacity: 0.17,
-      dashSize: 0.16,
-      gapSize: 0.10
+    const geo  = new THREE.BufferGeometry().setFromPoints(curve.getPoints(48));
+    const mat  = new THREE.LineDashedMaterial({
+      color: app.color, transparent: true, opacity: 0.17,
+      dashSize: 0.16, gapSize: 0.10
     });
-
     const line = new THREE.Line(geo, mat);
     line.computeLineDistances();
-
     connGrp.add(line);
   });
 }
@@ -1259,22 +1271,19 @@ function buildDock() {
   state.dockBtns.clear();
 
   const ov = document.createElement("button");
-  ov.type = "button";
+  ov.type      = "button";
   ov.className = "dock-btn";
   ov.textContent = "Overview";
   ov.addEventListener("click", () => resetView(true));
-
   dockEl.appendChild(ov);
   state.dockBtns.set("overview", ov);
 
   APPS.forEach((app, i) => {
     const btn = document.createElement("button");
-
-    btn.type = "button";
+    btn.type      = "button";
     btn.className = "dock-btn";
     btn.textContent = `${i + 1}. ${app.title}`;
     btn.addEventListener("click", () => selectApp(app.id, true));
-
     dockEl.appendChild(btn);
     state.dockBtns.set(app.id, btn);
   });
@@ -1293,41 +1302,35 @@ function syncDock() {
 
 function setPanel(app) {
   if (!app) {
-    elTitle.textContent = "IkeHub";
+    elTitle.textContent    = "IkeHub";
     elSubtitle.textContent = "The gateway into the Ikeverse ecosystem.";
-    elDesc.textContent = "Select an app portal to focus the camera, inspect the experience, and launch.";
-    elStatus.textContent = "Showcase Portal";
-    elDot.style.color = "#54c6ee";
-    elLaunch.href = "#";
-    elLaunch.textContent = "Select a Portal";
-    elTags.innerHTML = "";
-
+    elDesc.textContent     = "Select an app portal to focus the camera, inspect the experience, and launch the destination.";
+    elStatus.textContent   = "Showcase Portal";
+    elDot.style.color      = "#54c6ee";
+    elLaunch.href          = "#";
+    elLaunch.textContent   = "Select a Portal";
+    elTags.innerHTML       = "";
     ["Three.js", "Portal Hub", "App Showcase", "Ikeverse"].forEach(addTag);
-
     elMode.textContent = "Overview";
   } else {
-    elTitle.textContent = app.title;
+    elTitle.textContent    = app.title;
     elSubtitle.textContent = app.subtitle;
-    elDesc.textContent = app.description;
-    elStatus.textContent = app.status;
-    elDot.style.color = "#" + new THREE.Color(app.color).getHexString();
-    elLaunch.href = app.href;
-    elLaunch.textContent = `Launch ${app.title}`;
-    elTags.innerHTML = "";
-
+    elDesc.textContent     = app.description;
+    elStatus.textContent   = app.status;
+    elDot.style.color      = "#" + new THREE.Color(app.color).getHexString();
+    elLaunch.href          = app.href;
+    elLaunch.textContent   = `Launch ${app.title}`;
+    elTags.innerHTML       = "";
     app.tags.forEach(addTag);
-
-    elMode.textContent = "Focused";
-    liveEl.textContent = `${app.title} selected`;
+    elMode.textContent   = "Focused";
+    liveEl.textContent   = `${app.title} selected`;
   }
 }
 
 function addTag(tag) {
-  const s = document.createElement("span");
-
+  const s     = document.createElement("span");
   s.className = "tag";
   s.textContent = tag;
-
   elTags.appendChild(s);
 }
 
@@ -1355,12 +1358,13 @@ function selectApp(appId, userInput = false) {
   state.selected = appId;
   state.spinning = false;
 
+  // World position accounts for nodeRoot idle-spin rotation
   const worldPos = new THREE.Vector3();
   nd.group.getWorldPosition(worldPos);
   worldPos.y = 1.8;
 
   const dirXZ = new THREE.Vector3(worldPos.x, 0, worldPos.z).normalize();
-  const camY = state.cfg.focusH + (state.cfg.mobile ? 0.7 : state.cfg.tablet ? 0.35 : 0);
+  const camY  = state.cfg.focusH + (state.cfg.mobile ? 0.7 : state.cfg.tablet ? 0.35 : 0);
 
   state.camTargetLook.copy(worldPos);
   state.camTargetPos.set(
@@ -1380,7 +1384,6 @@ function focusNext() {
     selectApp(APPS[0].id, true);
     return;
   }
-
   const idx = APPS.findIndex((a) => a.id === state.selected);
   selectApp(APPS[(idx + 1) % APPS.length].id, true);
 }
@@ -1394,32 +1397,24 @@ function markInput() {
 // ─────────────────────────────────────────────────────────────────────────────
 function attachEvents() {
   renderer.domElement.addEventListener("pointermove", (e) => {
-    const b = renderer.domElement.getBoundingClientRect();
-
-    pointer.x = ((e.clientX - b.left) / b.width) * 2 - 1;
-    pointer.y = -((e.clientY - b.top) / b.height) * 2 + 1;
+    const b   = renderer.domElement.getBoundingClientRect();
+    pointer.x =  ((e.clientX - b.left) / b.width)  * 2 - 1;
+    pointer.y = -((e.clientY - b.top)  / b.height) * 2 + 1;
   });
 
   renderer.domElement.addEventListener("pointerdown", markInput);
 
   renderer.domElement.addEventListener("click", () => {
     raycaster.setFromCamera(pointer, camera);
-
     const hits = raycaster.intersectObjects(state.pickable, false);
-
     if (!hits.length) return;
 
     const appId = hits[0].object.userData.appId;
-
     if (!appId) return;
 
     if (state.selected === appId) {
       const app = APPS.find((a) => a.id === appId);
-
-      if (app?.href) {
-        window.location.href = app.href;
-      }
-
+      if (app?.href) window.location.href = app.href;
       return;
     }
 
@@ -1431,16 +1426,13 @@ function attachEvents() {
       resetView(true);
       return;
     }
-
     const n = Number(e.key);
-
     if (Number.isInteger(n) && n >= 1 && n <= APPS.length) {
       selectApp(APPS[n - 1].id, true);
     }
   });
 
   window.addEventListener("resize", onResize);
-
   btnReset.addEventListener("click", () => resetView(true));
   btnNext.addEventListener("click", focusNext);
 }
@@ -1460,11 +1452,8 @@ function onResize() {
   placeNodes();
   makeConnections();
 
-  if (state.selected) {
-    selectApp(state.selected, false);
-  } else {
-    resetView(false);
-  }
+  if (state.selected) selectApp(state.selected, false);
+  else resetView(false);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1472,88 +1461,74 @@ function onResize() {
 // ─────────────────────────────────────────────────────────────────────────────
 function updateHover() {
   raycaster.setFromCamera(pointer, camera);
-
-  const hits = raycaster.intersectObjects(state.pickable, false);
-
+  const hits    = raycaster.intersectObjects(state.pickable, false);
   state.hovered = hits.length ? (hits[0].object.userData.appId ?? null) : null;
-
   document.body.style.cursor = state.hovered ? "pointer" : "default";
 }
 
 function updateHub() {
   const h = state.hub;
-
   if (!h.group) return;
-
-  h.group.rotation.y += 0.0011;
+  h.group.rotation.y  += 0.0011;
   h.sphere.rotation.y += 0.0019;
-  h.ringA.rotation.y += 0.0024;
-  h.ringB.rotation.y -= 0.0042;
-  h.ringC.rotation.y += 0.0058;
+  h.ringA.rotation.y  += 0.0024;
+  h.ringB.rotation.y  -= 0.0042;
+  h.ringC.rotation.y  += 0.0058;
 }
 
 function updateNodes(t) {
   APPS.forEach((app, idx) => {
-    const nd = state.nodes.get(app.id);
-
+    const nd  = state.nodes.get(app.id);
     if (!nd) return;
 
     const sel = state.selected === app.id;
-    const hov = state.hovered === app.id;
+    const hov = state.hovered  === app.id;
 
+    // Bob orbPivot (orb + decal + atm + textBillboard all bob together)
     nd.orbPivot.position.y = 1.34 + Math.sin(t * 0.80 + idx * 1.1) * 0.09;
+
+    // Planet self-rotation
     nd.orb.rotation.y += 0.0034;
+
+    // Track ring slow rotation
     nd.track.rotation.z += 0.0024 + idx * 0.0005;
 
+    // Selection ring — spin + fade
     nd.selRing.rotation.z += 0.007;
     nd.selRing.material.opacity = THREE.MathUtils.lerp(
-      nd.selRing.material.opacity,
-      sel ? 0.34 : 0,
-      0.074
+      nd.selRing.material.opacity, sel ? 0.34 : 0, 0.074
     );
 
+    // Orb emissive — brightens on hover/select
     nd.orb.material.emissiveIntensity = THREE.MathUtils.lerp(
-      nd.orb.material.emissiveIntensity,
-      sel ? 0.42 : hov ? 0.32 : 0.18,
-      0.1
+      nd.orb.material.emissiveIntensity, sel ? 0.42 : hov ? 0.32 : 0.18, 0.1
     );
 
+    // Atmospheric halo
     nd.atm.material.opacity = THREE.MathUtils.lerp(
-      nd.atm.material.opacity,
-      sel ? 0.58 : hov ? 0.48 : 0.32,
-      0.1
+      nd.atm.material.opacity, sel ? 0.58 : hov ? 0.48 : 0.32, 0.1
     );
 
+    // Track opacity
     nd.track.material.opacity = THREE.MathUtils.lerp(
-      nd.track.material.opacity,
-      sel ? 0.17 : hov ? 0.13 : 0.09,
-      0.1
+      nd.track.material.opacity, sel ? 0.17 : hov ? 0.13 : 0.09, 0.1
     );
 
+    // Text ring — always faces camera; crawl speed varies by state
     nd.textBillboard.lookAt(camera.position);
-
     const crawl = sel ? 0.010 : hov ? 0.006 : 0.0022;
     nd.textSpin.rotation.z -= crawl;
-
     nd.textRing.material.opacity = THREE.MathUtils.lerp(
-      nd.textRing.material.opacity,
-      sel ? 0.0 : hov ? 1.0 : 0.76,
-      0.1
+      nd.textRing.material.opacity, sel ? 0.0 : hov ? 1.0 : 0.76, 0.1
     );
 
+    // Card — single plane, smooth opacity reveal
+    // depthTest:false on the material eliminates all z-fighting / flickering
     const cardTarget = sel ? 1.0 : 0.0;
-    const prev = nd.cardBg.material.opacity;
-    const next = THREE.MathUtils.lerp(prev, cardTarget, 0.074);
-
-    nd.cardBg.material.opacity = next;
-    nd.cardBorder.material.opacity = next * 0.12;
-    nd.cardImg.material.opacity = next;
-    nd.cardInfo.material.opacity = next;
-    nd.cardGrp.visible = next > 0.01;
-
-    if (nd.cardGrp.visible) {
-      nd.cardGrp.lookAt(camera.position);
-    }
+    const newOp = THREE.MathUtils.lerp(nd.cardPanel.material.opacity, cardTarget, 0.076);
+    nd.cardPanel.material.opacity = newOp;
+    nd.cardGrp.visible = newOp > 0.01;
+    if (nd.cardGrp.visible) nd.cardGrp.lookAt(camera.position);
   });
 }
 
@@ -1562,6 +1537,15 @@ function updateBackground(t) {
 
   if (envGroup.userData.dust) {
     envGroup.userData.dust.rotation.z += 0.00024;
+  }
+
+  // Vapor sprites — gentle independent breathing opacity
+  const vs = bgGroup.userData.vaporSprites;
+  if (vs) {
+    vs.forEach((spr) => {
+      spr.material.opacity =
+        spr.userData.baseOp + Math.sin(t * 0.18 + spr.userData.phase) * 0.10;
+    });
   }
 }
 
@@ -1576,16 +1560,16 @@ function updateCamera() {
 // ─────────────────────────────────────────────────────────────────────────────
 function onFrame() {
   timer.update();
-
   const t = timer.getElapsed();
 
-  if (!state.spinning && state.selected === null && performance.now() - state.lastInput > IDLE_DELAY) {
+  if (!state.spinning && state.selected === null &&
+      performance.now() - state.lastInput > IDLE_DELAY) {
     state.spinning = true;
   }
 
   if (state.spinning) {
     nodeRoot.rotation.y += 0.00095;
-    connGrp.rotation.y += 0.00095;
+    connGrp.rotation.y  += 0.00095;
   }
 
   updateHover();
@@ -1593,7 +1577,6 @@ function onFrame() {
   updateNodes(t);
   updateBackground(t);
   updateCamera();
-
   composer.render();
 }
 

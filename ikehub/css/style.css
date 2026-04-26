@@ -1,5 +1,5 @@
 /* ─── FONTS ──────────────────────────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
 /* ─── DESIGN TOKENS ──────────────────────────────────────────────────────────── */
 :root {
@@ -40,9 +40,9 @@
   --shadow-btn-pri: 0 8px 26px rgba(44,162,216,0.36);
 
   /* Typography */
-  --font-body:    "DM Sans",   ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Syne",      ui-sans-serif, system-ui, sans-serif;
-  --font-hub:     "Orbitron",  ui-monospace, monospace;
+  --font-body:    "DM Sans",             ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Syne",                ui-sans-serif, system-ui, sans-serif;
+  --font-hub:     "UnifrakturMaguntia",  "Orbitron",    ui-monospace, monospace;
 
   /* Safe areas */
   --safe-t: max(14px, env(safe-area-inset-top));
@@ -434,7 +434,6 @@ button { font: inherit; cursor: pointer; }
 
   .meta-card { display: none; }
 
-  /* Detail panel → compact bottom sheet */
   .detail-panel {
     position: absolute;
     top: auto;
@@ -457,7 +456,6 @@ button { font: inherit; cursor: pointer; }
     max-width: none;
   }
 
-  /* Ultra-minimal brand chip — just name, no info */
   .brand-card {
     max-width: 200px;
     padding: 10px 13px 11px;
@@ -476,7 +474,6 @@ button { font: inherit; cursor: pointer; }
   .legend,
   .hint { display: none; }
 
-  /* Very thin detail sheet — title + CTA only */
   .detail-panel {
     left: 10px; right: 10px;
     bottom: calc(10px + 48px + 10px);
@@ -495,7 +492,6 @@ button { font: inherit; cursor: pointer; }
   .cta-row { gap: 6px; }
   .btn { min-height: 36px; padding: 8px 12px; font-size: 12px; }
 
-  /* Dock — full width, scrollable */
   .dock {
     left: 10px; right: 10px; bottom: 10px;
     transform: none;
