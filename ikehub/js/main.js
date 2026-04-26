@@ -642,44 +642,53 @@ function makeCardTex(app, appTex) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUB TITLE — UnifrakturMaguntia (Old English), large with gold glow
+// HUB TITLE — Cinzel Decorative (Roman monumental, fully legible)
+// Two layers: main name + thin subtitle in DM Sans
 // ─────────────────────────────────────────────────────────────────────────────
 function makeHubTitleTex(text) {
-  const W = 1100, H = 220;
+  const W = 1200, H = 260;
   const c   = document.createElement("canvas");
   c.width   = W; c.height = H;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
-  // Warm gold outer glow pass
-  ctx.shadowColor  = "rgba(212,174,90,0.72)";
-  ctx.shadowBlur   = 38;
-  ctx.fillStyle    = "rgba(218,181,88,0.0)";
-  ctx.font         = "120px 'UnifrakturMaguntia', serif";
+  // ── MAIN NAME — Cinzel Decorative, large, gold ──────────────────────────
+  // Pass 1: wide gold aura
+  ctx.shadowColor  = "rgba(212,174,90,0.65)";
+  ctx.shadowBlur   = 42;
+  ctx.fillStyle    = "rgba(218,181,88,0)";
+  ctx.font         = "900 92px 'Cinzel Decorative', serif";
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, W/2, H/2);
+  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
 
-  // Cyan inner glow pass
-  ctx.shadowColor = "rgba(84,198,238,0.40)";
-  ctx.shadowBlur  = 16;
-  ctx.fillStyle   = "rgba(218,181,88,0.0)";
-  ctx.fillText(text, W/2, H/2);
+  // Pass 2: cyan inner halo
+  ctx.shadowColor = "rgba(84,198,238,0.38)";
+  ctx.shadowBlur  = 18;
+  ctx.fillStyle   = "rgba(218,181,88,0)";
+  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
 
-  // Main gold fill
-  ctx.shadowBlur  = 8;
-  ctx.fillStyle   = "rgba(218,181,88,0.98)";
-  ctx.fillText(text, W/2, H/2);
+  // Pass 3: main crisp fill
+  ctx.shadowBlur  = 6;
+  ctx.fillStyle   = "rgba(222,185,88,0.98)";
+  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
 
-  // Fade underline accent
-  ctx.shadowBlur = 0;
-  const uw = ctx.measureText(text).width * 0.60;
-  const ug = ctx.createLinearGradient(W/2 - uw/2, 0, W/2 + uw/2, 0);
+  // ── SUBTITLE — thin letterspace label below ─────────────────────────────
+  ctx.shadowBlur  = 0;
+  ctx.font        = "400 18px 'DM Sans', sans-serif";
+  ctx.fillStyle   = "rgba(84,198,238,0.62)";
+  ctx.letterSpacing = "0.3em";
+  ctx.fillText("THE  IKEVERSE  PORTAL  HUB", W/2, H/2 + 56);
+  ctx.letterSpacing = "0";
+
+  // ── ACCENT LINE ─────────────────────────────────────────────────────────
+  const uw = 220;
+  const ug = ctx.createLinearGradient(W/2 - uw, 0, W/2 + uw, 0);
   ug.addColorStop(0,   "rgba(84,198,238,0)");
-  ug.addColorStop(0.5, "rgba(84,198,238,0.52)");
+  ug.addColorStop(0.5, "rgba(84,198,238,0.46)");
   ug.addColorStop(1,   "rgba(84,198,238,0)");
   ctx.fillStyle = ug;
-  ctx.fillRect(W/2 - uw/2, H/2 + 60, uw, 2);
+  ctx.fillRect(W/2 - uw, H/2 + 38, uw * 2, 1.5);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -1066,8 +1075,8 @@ function makeHub() {
     transparent: true, opacity: 0.96,
     depthWrite: false
   }));
-  title.position.set(0, 3.78, 0);
-  title.scale.set(4.40, 0.90, 1);
+  title.position.set(0, 3.90, 0);
+  title.scale.set(5.40, 1.16, 1);
 
   grp.add(base, glow, ringA, ringB, ringC, sphere, hubDecal, title);
   world.add(grp);
@@ -1363,7 +1372,13 @@ function buildDock() {
     const btn = document.createElement("button");
     btn.type      = "button";
     btn.className = "dock-btn";
-    btn.textContent = `${i + 1}. ${app.title}`;
+
+    // Live status dot
+    const dot = document.createElement("span");
+    dot.className = `live-dot ${app.live ? "is-live" : "is-soon"}`;
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(`${i + 1}. ${app.title}`));
+
     btn.addEventListener("click", () => selectApp(app.id, true));
     dockEl.appendChild(btn);
     state.dockBtns.set(app.id, btn);
@@ -1610,6 +1625,23 @@ function updateHover() {
   const hits    = raycaster.intersectObjects(state.pickable, false);
   state.hovered = hits.length ? (hits[0].object.userData.appId ?? null) : null;
   document.body.style.cursor = state.hovered ? "pointer" : "default";
+
+  // Drive hover tooltip
+  const tip = window._ikeTip;
+  if (tip) {
+    if (state.hovered && state.selected !== state.hovered) {
+      const app = APPS.find((a) => a.id === state.hovered);
+      if (app) {
+        const dot = app.live
+          ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#44ff88;box-shadow:0 0 5px #44ff88;margin-right:7px;vertical-align:middle"></span>`
+          : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ffaa33;margin-right:7px;vertical-align:middle"></span>`;
+        tip.innerHTML = dot + app.title;
+        tip.className = "visible";
+      }
+    } else {
+      tip.className = "hidden";
+    }
+  }
 }
 
 function updateHub() {
@@ -1713,6 +1745,23 @@ function updateBackground(t) {
         spr.userData.baseOp + Math.sin(t * 0.18 + spr.userData.phase) * 0.10;
     });
   }
+
+  // Twinkle sprites — staggered brief flashes like scintillating stars
+  const tw = bgGroup.userData.twinkles;
+  if (tw) {
+    const now = performance.now();
+    tw.forEach((spr) => {
+      if (now >= spr.userData.nextFlash) {
+        const age = now - spr.userData.nextFlash;
+        if (age < 600) {
+          spr.material.opacity = Math.sin((age / 600) * Math.PI) * 0.86;
+        } else {
+          spr.material.opacity  = 0;
+          spr.userData.nextFlash = now + 2200 + Math.random() * 7500;
+        }
+      }
+    });
+  }
 }
 
 function updateCamera() {
@@ -1789,6 +1838,48 @@ function refreshCardTextures() {
       nd.cardPanel.material.needsUpdate = true;
     }
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HOVER TOOLTIP — follows cursor, shows app name when hovering planets
+// ─────────────────────────────────────────────────────────────────────────────
+function injectTooltip() {
+  const tip = document.createElement("div");
+  tip.id        = "ikehub-tooltip";
+  tip.className = "hidden";
+  document.body.appendChild(tip);
+  window.addEventListener("mousemove", (e) => {
+    tip.style.left = (e.clientX + 18) + "px";
+    tip.style.top  = (e.clientY - 12) + "px";
+  });
+  window._ikeTip = tip;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TWINKLE SPRITES — random bright star flashes
+// ─────────────────────────────────────────────────────────────────────────────
+function makeTwinkles() {
+  const twinkles = [];
+  const baseTex  = makeRadialTex(255, 255, 255, 0.92, 64);
+
+  for (let i = 0; i < 18; i++) {
+    const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: baseTex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    const r = 32 + Math.random() * 88;
+    const θ = Math.random() * Math.PI * 2;
+    const φ = Math.acos(Math.random() * 2 - 1);
+    spr.position.set(r*Math.sin(φ)*Math.cos(θ), r*Math.cos(φ)*0.62, r*Math.sin(φ)*Math.sin(θ));
+    const s = 0.07 + Math.random() * 0.14;
+    spr.scale.set(s, s, 1);
+    spr.userData.nextFlash = Math.random() * 5000;
+    spr.userData.phase     = Math.random() * Math.PI * 2;
+    bgGroup.add(spr);
+    twinkles.push(spr);
+  }
+
+  bgGroup.userData.twinkles = twinkles;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1879,6 +1970,7 @@ function init() {
 
   makeLights();
   makeBackground();
+  makeTwinkles();
   makeEnv();
   makeHub();
   makeNodes();
@@ -1905,6 +1997,7 @@ function init() {
   attachEvents();
   renderer.setAnimationLoop(onFrame);
   injectCollapseButtons();
+  injectTooltip();
 
   setTimeout(refreshCardTextures, 1500);
   setTimeout(refreshCardTextures, 4000);
