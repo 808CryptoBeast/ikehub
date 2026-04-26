@@ -241,17 +241,18 @@ function getLayout() {
 // STATE
 // ─────────────────────────────────────────────────────────────────────────────
 const state = {
-  selected:      null,
-  hovered:       null,
-  spinning:      true,
-  lastInput:     performance.now(),
-  camTargetPos:  new THREE.Vector3(),
-  camTargetLook: new THREE.Vector3(),
-  cfg:           getLayout(),
-  nodes:         new Map(),
-  pickable:      [],
-  dockBtns:      new Map(),
-  hub:           {}
+  selected:       null,
+  hovered:        null,
+  spinning:       true,
+  lastInput:      performance.now(),
+  camTargetPos:   new THREE.Vector3(),
+  camTargetLook:  new THREE.Vector3(),
+  cameraLerping:  false,   // true while camera is animating to a target
+  cfg:            getLayout(),
+  nodes:          new Map(),
+  pickable:       [],
+  dockBtns:       new Map(),
+  hub:            {}
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1302,15 +1303,31 @@ function syncDock() {
 
 function setPanel(app) {
   if (!app) {
-    elTitle.textContent    = "IkeHub";
-    elSubtitle.textContent = "The gateway into the Ikeverse ecosystem.";
-    elDesc.textContent     = "Select an app portal to focus the camera, inspect the experience, and launch the destination.";
-    elStatus.textContent   = "Showcase Portal";
+    elTitle.textContent    = "Ikeverse Portal Hub";
+    elSubtitle.textContent = "4 interconnected worlds — one cinematic gateway.";
+    elDesc.textContent     = "Orbit the hub, click any portal planet to focus, then click again to launch. Use keys 1–4 to jump, Esc to return.";
+    elStatus.textContent   = "All Systems Active";
     elDot.style.color      = "#54c6ee";
     elLaunch.href          = "#";
-    elLaunch.textContent   = "Select a Portal";
+    elLaunch.textContent   = "Explore the Hub";
     elTags.innerHTML       = "";
-    ["Three.js", "Portal Hub", "App Showcase", "Ikeverse"].forEach(addTag);
+
+    // Show mini portal grid in overview
+    const portalItems = [
+      { label: "Culturalverse", color: "#ffb86b" },
+      { label: "Living Knowledge", color: "#77f0b2" },
+      { label: "IkeStar", color: "#67d9ff" },
+      { label: "Cosmic Weave", color: "#a88cff" }
+    ];
+    portalItems.forEach((p) => {
+      const s = document.createElement("span");
+      s.className = "tag";
+      s.style.borderColor = p.color + "55";
+      s.style.color       = p.color;
+      s.innerHTML = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${p.color};box-shadow:0 0 6px ${p.color};margin-right:6px;vertical-align:middle"></span>${p.label}`;
+      elTags.appendChild(s);
+    });
+
     elMode.textContent = "Overview";
   } else {
     elTitle.textContent    = app.title;
@@ -1340,10 +1357,10 @@ function addTag(tag) {
 function resetView(userInput = false) {
   state.selected = null;
   state.spinning = true;
+  state.cameraLerping = true;
 
   state.camTargetPos.copy(state.cfg.camOvPos);
   state.camTargetLook.copy(state.cfg.camOvTgt);
-  controls.target.copy(state.cfg.camOvTgt);
 
   setPanel(null);
   syncDock();
@@ -1357,6 +1374,7 @@ function selectApp(appId, userInput = false) {
 
   state.selected = appId;
   state.spinning = false;
+  state.cameraLerping = true;
 
   // World position accounts for nodeRoot idle-spin rotation
   const worldPos = new THREE.Vector3();
@@ -1402,7 +1420,15 @@ function attachEvents() {
     pointer.y = -((e.clientY - b.top)  / b.height) * 2 + 1;
   });
 
-  renderer.domElement.addEventListener("pointerdown", markInput);
+  renderer.domElement.addEventListener("pointerdown", (e) => {
+    markInput();
+    // Stop any in-progress camera lerp so the user can orbit freely right away
+    if (state.cameraLerping) {
+      state.cameraLerping = false;
+      state.camTargetPos.copy(camera.position);
+      state.camTargetLook.copy(controls.target);
+    }
+  });
 
   renderer.domElement.addEventListener("click", () => {
     raycaster.setFromCamera(pointer, camera);
@@ -1550,8 +1576,19 @@ function updateBackground(t) {
 }
 
 function updateCamera() {
-  camera.position.lerp(state.camTargetPos, 0.052);
-  controls.target.lerp(state.camTargetLook, 0.068);
+  if (state.cameraLerping) {
+    camera.position.lerp(state.camTargetPos, 0.056);
+    controls.target.lerp(state.camTargetLook, 0.072);
+    // Stop lerping once both are close enough — hand control back to OrbitControls
+    if (
+      camera.position.distanceTo(state.camTargetPos) < 0.04 &&
+      controls.target.distanceTo(state.camTargetLook) < 0.04
+    ) {
+      camera.position.copy(state.camTargetPos);
+      controls.target.copy(state.camTargetLook);
+      state.cameraLerping = false;
+    }
+  }
   controls.update();
 }
 
@@ -1581,8 +1618,51 @@ function onFrame() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// INIT
+// COLLAPSE TOGGLES — injected into brand-card and detail-panel
 // ─────────────────────────────────────────────────────────────────────────────
+function injectCollapseButtons() {
+  // ── Brand card collapse ───────────────────────────────────────────────────
+  const brandCard = document.querySelector(".brand-card");
+  if (brandCard) {
+    const tog = document.createElement("button");
+    tog.type      = "button";
+    tog.className = "collapse-btn";
+    tog.setAttribute("aria-label", "Toggle panel");
+    tog.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path class="tog-icon" d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    brandCard.appendChild(tog);
+
+    tog.addEventListener("click", () => {
+      brandCard.classList.toggle("collapsed");
+      const ic = tog.querySelector(".tog-icon");
+      ic.setAttribute("d", brandCard.classList.contains("collapsed")
+        ? "M2 8l4-4 4 4"   // chevron up = expand
+        : "M2 4l4 4 4-4"); // chevron down = collapse
+    });
+  }
+
+  // ── Detail panel collapse ─────────────────────────────────────────────────
+  const detailPanel = document.querySelector(".detail-panel");
+  if (detailPanel) {
+    const tog2 = document.createElement("button");
+    tog2.type      = "button";
+    tog2.className = "collapse-btn panel-collapse-btn";
+    tog2.setAttribute("aria-label", "Toggle detail panel");
+    tog2.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path class="tog-icon2" d="M2 8l4-4 4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    detailPanel.prepend(tog2);
+
+    tog2.addEventListener("click", () => {
+      detailPanel.classList.toggle("collapsed");
+      const ic = tog2.querySelector(".tog-icon2");
+      ic.setAttribute("d", detailPanel.classList.contains("collapsed")
+        ? "M2 4l4 4 4-4"   // down = expand
+        : "M2 8l4-4 4 4"); // up = collapse
+    });
+  }
+}
 function init() {
   console.log("IkeHub main.js loaded:", import.meta.url);
   console.log("IkeHub image base:", IMAGE_BASE);
@@ -1601,6 +1681,7 @@ function init() {
   attachEvents();
 
   renderer.setAnimationLoop(onFrame);
+  injectCollapseButtons();
 }
 
 if (document.fonts?.ready) {
