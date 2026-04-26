@@ -13,7 +13,7 @@ const APPS = [
     title: "The Culturalverse",
     subtitle: "A living world of culture, story, memory, and identity.",
     description: "A narrative-first portal into cultural knowledge, story structures, and immersive heritage experiences across the Ikeverse ecosystem.",
-    href: "culturalverse.html",
+    href: "https://808cryptobeast.github.io/culturalverse/",
     image: "assets/images/Culturalverse-icon.png",
     color: 0xffb86b,
     status: "Story + Culture",
