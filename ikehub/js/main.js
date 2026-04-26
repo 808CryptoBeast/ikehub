@@ -5,6 +5,18 @@ import { RenderPass }      from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ASSET PATHS
+// main.js lives in: ikehub/js/main.js
+// images live in:  ikehub/assets/images/
+// This builds the correct URL by going up from /js/ into /assets/images/
+// ─────────────────────────────────────────────────────────────────────────────
+const IMAGE_BASE = new URL("../assets/images/", import.meta.url).href;
+
+function img(file) {
+  return `${IMAGE_BASE}${file}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // APP DATA
 // ─────────────────────────────────────────────────────────────────────────────
 const APPS = [
