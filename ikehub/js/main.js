@@ -99,6 +99,12 @@ if (!canvas) {
 elAppCount.textContent = String(APPS.length);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PERFORMANCE FLAGS — declared early, used by renderer and bloom setup
+// ─────────────────────────────────────────────────────────────────────────────
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const IS_MOBILE      = window.innerWidth <= 680;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RENDERER
 // ─────────────────────────────────────────────────────────────────────────────
 const renderer = new THREE.WebGLRenderer({
@@ -244,12 +250,6 @@ function getLayout() {
 // ─────────────────────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
-// REDUCED MOTION — respect prefers-reduced-motion OS setting
-// ─────────────────────────────────────────────────────────────────────────────
-const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const IS_MOBILE      = window.innerWidth <= 680;
-
 const state = {
   selected:       null,
   hovered:        null,
