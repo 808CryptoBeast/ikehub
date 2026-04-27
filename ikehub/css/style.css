@@ -1,5 +1,5 @@
 /* ─── FONTS ──────────────────────────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=UnifrakturMaguntia&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Cinzel+Decorative:wght@400;700;900&family=UnifrakturMaguntia&family=Orbitron:wght@400;700;900&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
 /* ─── DESIGN TOKENS ──────────────────────────────────────────────────────────── */
 :root {
@@ -868,4 +868,93 @@ button { font: inherit; cursor: pointer; }
 
   .wayfinding-btn .wf-label { display: none; }
   .wayfinding-btn .wf-icon  { font-size: 15px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING SCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+#ikehub-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 80% 60% at 50% 50%, #0a1830 0%, #02050c 100%);
+  transition: opacity 0.72s ease, transform 0.72s ease;
+}
+
+#ikehub-loader.loader-out {
+  opacity: 0;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+.loader-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.loader-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(212, 174, 90, 0.14);
+  border-top-color: rgba(212, 174, 90, 0.88);
+  border-right-color: rgba(84, 198, 238, 0.52);
+  animation: loader-spin 1.1s linear infinite;
+}
+
+@keyframes loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+.loader-title {
+  font-family: "Uncial Antiqua", "UnifrakturMaguntia", serif;
+  font-size: clamp(36px, 6vw, 56px);
+  color: rgba(218, 181, 88, 0.94);
+  text-shadow:
+    0 0 28px rgba(212, 174, 90, 0.52),
+    0 0 60px rgba(84, 198, 238, 0.18);
+  letter-spacing: 0.04em;
+  animation: loader-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes loader-glow {
+  from { text-shadow: 0 0 22px rgba(212,174,90,0.42), 0 0 48px rgba(84,198,238,0.12); }
+  to   { text-shadow: 0 0 38px rgba(212,174,90,0.68), 0 0 80px rgba(84,198,238,0.26); }
+}
+
+.loader-sub {
+  font-family: "DM Sans", sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(84, 198, 238, 0.52);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-ring { animation: none; border-top-color: rgba(212,174,90,0.6); }
+  .loader-title { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CURSOR PARTICLE TRAIL
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cursor-spark {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transition: none;
+  transform: translate(-50%, -50%) scale(1);
+  will-change: opacity, transform;
+}
+
+.cursor-spark.spark-gone {
+  opacity: 0 !important;
+  transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) scale(0.1) !important;
+  transition: opacity 0.48s ease-out, transform 0.48s ease-out;
 }

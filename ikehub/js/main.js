@@ -649,53 +649,58 @@ function makeCardTex(app, appTex) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HUB TITLE — Cinzel Decorative (Roman monumental, fully legible)
-// Two layers: main name + thin subtitle in DM Sans
+// HUB TITLE — Uncial Antiqua (Old English cursive/insular manuscript script)
+// IkeHub in mixed-case uncial + thin Hawaiian navigation subtitle
 // ─────────────────────────────────────────────────────────────────────────────
 function makeHubTitleTex(text) {
-  const W = 1200, H = 260;
+  const W = 1200, H = 280;
   const c   = document.createElement("canvas");
   c.width   = W; c.height = H;
   const ctx = c.getContext("2d");
   ctx.clearRect(0, 0, W, H);
 
-  // ── MAIN NAME — Cinzel Decorative, large, gold ──────────────────────────
-  // Pass 1: wide gold aura
-  ctx.shadowColor  = "rgba(212,174,90,0.65)";
-  ctx.shadowBlur   = 42;
+  // ── MAIN NAME — Uncial Antiqua, old English cursive, gold ─────────────────
+  // Glow pass 1 — warm amber aura
+  ctx.shadowColor  = "rgba(212,174,90,0.70)";
+  ctx.shadowBlur   = 44;
   ctx.fillStyle    = "rgba(218,181,88,0)";
-  ctx.font         = "900 92px 'Cinzel Decorative', serif";
+  ctx.font         = "96px 'Uncial Antiqua', serif";
   ctx.textAlign    = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
+  ctx.fillText(text, W/2, H/2 - 18);
 
-  // Pass 2: cyan inner halo
-  ctx.shadowColor = "rgba(84,198,238,0.38)";
-  ctx.shadowBlur  = 18;
+  // Glow pass 2 — cyan halo
+  ctx.shadowColor = "rgba(84,198,238,0.36)";
+  ctx.shadowBlur  = 20;
   ctx.fillStyle   = "rgba(218,181,88,0)";
-  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
+  ctx.fillText(text, W/2, H/2 - 18);
 
-  // Pass 3: main crisp fill
-  ctx.shadowBlur  = 6;
-  ctx.fillStyle   = "rgba(222,185,88,0.98)";
-  ctx.fillText(text.toUpperCase(), W/2, H/2 - 12);
+  // Main fill — rich gold
+  ctx.shadowBlur  = 8;
+  ctx.fillStyle   = "rgba(224,187,86,0.98)";
+  ctx.fillText(text, W/2, H/2 - 18);
 
-  // ── SUBTITLE — thin letterspace label below ─────────────────────────────
+  // Subtle stroke for manuscript ink-press effect
   ctx.shadowBlur  = 0;
-  ctx.font        = "400 18px 'DM Sans', sans-serif";
-  ctx.fillStyle   = "rgba(84,198,238,0.62)";
-  ctx.letterSpacing = "0.3em";
-  ctx.fillText("THE  IKEVERSE  PORTAL  HUB", W/2, H/2 + 56);
-  ctx.letterSpacing = "0";
+  ctx.strokeStyle = "rgba(180,140,50,0.28)";
+  ctx.lineWidth   = 1.2;
+  ctx.strokeText(text, W/2, H/2 - 18);
 
-  // ── ACCENT LINE ─────────────────────────────────────────────────────────
-  const uw = 220;
+  // ── ACCENT LINE ──────────────────────────────────────────────────────────
+  const uw = 200;
   const ug = ctx.createLinearGradient(W/2 - uw, 0, W/2 + uw, 0);
   ug.addColorStop(0,   "rgba(84,198,238,0)");
-  ug.addColorStop(0.5, "rgba(84,198,238,0.46)");
+  ug.addColorStop(0.5, "rgba(84,198,238,0.50)");
   ug.addColorStop(1,   "rgba(84,198,238,0)");
   ctx.fillStyle = ug;
-  ctx.fillRect(W/2 - uw, H/2 + 38, uw * 2, 1.5);
+  ctx.fillRect(W/2 - uw, H/2 + 35, uw * 2, 1.5);
+
+  // ── SUBTITLE — thin DM Sans below accent line ────────────────────────────
+  ctx.font        = "400 17px 'DM Sans', sans-serif";
+  ctx.fillStyle   = "rgba(84,198,238,0.58)";
+  ctx.shadowBlur  = 0;
+  // Manually spaced for clean look
+  ctx.fillText("✦  THE  IKEVERSE  PORTAL  HUB  ✦", W/2, H/2 + 62);
 
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -1005,6 +1010,109 @@ function makeEnv() {
 
   envGroup.userData.dust = dust;
   envGroup.add(dust);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MOON PHASE RING — 8 moon phase icons on a rotating ring around hub
+// Replaces ringB (tilted gold) — placed on the existing +32° orbital path
+// Each phase is drawn geometrically on a small canvas for cross-platform
+// consistency and rendered as a billboard sprite.
+// ─────────────────────────────────────────────────────────────────────────────
+function makeMoonPhaseTex(phase) {
+  const S   = 128;
+  const c   = document.createElement("canvas");
+  c.width   = c.height = S;
+  const ctx = c.getContext("2d");
+  const cx  = S / 2, cy = S / 2, r = S * 0.36;
+
+  // Draw moon phase geometrically: 0=new … 4=full … 7=waning crescent
+  ctx.clearRect(0, 0, S, S);
+
+  const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 1.6);
+  glow.addColorStop(0,   "rgba(240,220,160,0.22)");
+  glow.addColorStop(1,   "rgba(240,220,160,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, S, S);
+
+  // Base dark circle (moon silhouette)
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(28,36,58,0.82)"; ctx.fill();
+
+  // Lit portion using clipping
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+
+  const grad = ctx.createRadialGradient(cx - r*0.18, cy - r*0.18, 0, cx, cy, r);
+  grad.addColorStop(0,   "rgba(255,248,200,0.98)");
+  grad.addColorStop(0.6, "rgba(230,210,140,0.90)");
+  grad.addColorStop(1,   "rgba(190,165,90,0.70)");
+
+  // phase 0=new(dark), 4=full(bright). Phases 1-3 waxing, 5-7 waning
+  if (phase === 0) {
+    // new moon — fully dark, just draw faint outline
+  } else if (phase === 4) {
+    // full moon — full lit circle
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = grad; ctx.fill();
+  } else {
+    // crescent / gibbous — use ellipse overlap technique
+    const waxing  = phase < 4;
+    const t       = waxing ? (phase / 4) : ((8 - phase) / 4);
+    const xOffset = r * (1 - 2 * t);
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, -Math.PI/2, Math.PI/2, waxing);
+    ctx.ellipse(cx + xOffset, cy, r * Math.abs(1 - 2*t) || 0.01, r, 0, Math.PI/2, -Math.PI/2, waxing);
+    ctx.closePath();
+    ctx.fillStyle = grad; ctx.fill();
+  }
+  ctx.restore();
+
+  // Outer ring hint
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(212,174,90,0.30)"; ctx.lineWidth = 1.5; ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function makeMoonPhaseRing() {
+  const PHASES = 8;
+  const RING_R = 2.62; // slightly larger than hub sphere (1.24) + gap
+  const grp    = new THREE.Group();
+  grp.position.y = 1.8;
+  // Tilt to match ringB's +32° angle so it aligns naturally
+  grp.rotation.x = THREE.MathUtils.degToRad(32);
+
+  const moonSprites = [];
+
+  for (let i = 0; i < PHASES; i++) {
+    const angle = (i / PHASES) * Math.PI * 2;
+    const tex   = makeMoonPhaseTex(i);
+    const spr   = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, opacity: 0.78,
+      depthWrite: false, blending: THREE.NormalBlending
+    }));
+    spr.position.set(Math.cos(angle) * RING_R, 0, Math.sin(angle) * RING_R);
+    spr.scale.set(0.30, 0.30, 1);
+    spr.userData.baseAngle = angle;
+    grp.add(spr);
+    moonSprites.push(spr);
+  }
+
+  // Thin orbit ring behind the phases
+  const orbitRing = new THREE.Mesh(
+    new THREE.TorusGeometry(RING_R, 0.010, 8, 120),
+    new THREE.MeshBasicMaterial({
+      color: 0xd4ae5a, transparent: true, opacity: 0.13, depthWrite: false
+    })
+  );
+  grp.add(orbitRing);
+
+  world.add(grp);
+  state.hub.moonRingGrp   = grp;
+  state.hub.moonSprites   = moonSprites;
+  state.hub.moonOrbitMat  = orbitRing.material;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1707,6 +1815,9 @@ function resetView(userInput = false) {
   syncDock();
   window.dispatchEvent(new Event("ikehub:selectionchange"));
 
+  // Clear URL hash
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (_) {}
+
   if (userInput) markInput();
 }
 
@@ -1737,6 +1848,12 @@ function selectApp(appId, userInput = false) {
   syncDock();
   saveSession(appId);
   window.dispatchEvent(new Event("ikehub:selectionchange"));
+
+  // URL deep-link — shareable hash
+  try { history.replaceState(null, "", "#" + appId); } catch (_) {}
+
+  // Hub pulse — brief emissive flare acknowledging the connection
+  if (!REDUCED_MOTION) state.hub.pulseT = 1.0;
 
   if (userInput) markInput();
 }
@@ -1923,6 +2040,36 @@ function updateHub(t) {
   h.ringA.rotation.y  += 0.0024 * speed;
   h.ringB.rotation.y  -= 0.0042 * speed;
   h.ringC.rotation.y  += 0.0058 * speed;
+
+  // ── Moon phase ring — slow counter-rotation around hub ──────────────────
+  if (h.moonRingGrp) {
+    h.moonRingGrp.rotation.z += 0.0008 * speed;
+    // Wayfinding mode brightens the ring
+    const targetOp = state.wayfinding ? 0.94 : 0.78;
+    h.moonSprites.forEach(spr => {
+      spr.material.opacity = THREE.MathUtils.lerp(spr.material.opacity, targetOp, 0.04);
+    });
+    if (h.moonOrbitMat) {
+      h.moonOrbitMat.opacity = THREE.MathUtils.lerp(h.moonOrbitMat.opacity,
+        state.wayfinding ? 0.28 : 0.13, 0.04);
+    }
+  }
+
+  // ── Hub pulse on portal selection ────────────────────────────────────────
+  // state.hub.pulseT: 1.0 at moment of selection, decays to 0 over ~800ms
+  if (h.pulseT > 0) {
+    h.pulseT = Math.max(0, h.pulseT - 0.022); // ~45 frames to decay
+    const kick = Math.sin(h.pulseT * Math.PI) * h.pulseT;
+    h.sphere.material.emissiveIntensity = 0.18 + kick * 0.72;
+    if (h.glow) h.glow.material.opacity = THREE.MathUtils.lerp(0.30, 0.88, kick);
+    if (h.fillLight) h.fillLight.intensity = 5 + kick * 18;
+  } else {
+    h.sphere.material.emissiveIntensity = THREE.MathUtils.lerp(
+      h.sphere.material.emissiveIntensity, 0.18, 0.06
+    );
+    if (h.glow) h.glow.material.opacity = THREE.MathUtils.lerp(h.glow.material.opacity, 0.30, 0.06);
+    if (h.fillLight) h.fillLight.intensity = THREE.MathUtils.lerp(h.fillLight.intensity, 5, 0.06);
+  }
 
   updateCompassRing(t);
 }
@@ -2245,16 +2392,94 @@ function injectCollapseButtons() {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LOADING SCREEN — full-screen overlay, fades out after first render
+// ─────────────────────────────────────────────────────────────────────────────
+function injectLoader() {
+  const el = document.createElement("div");
+  el.id = "ikehub-loader";
+  el.innerHTML = `
+    <div class="loader-inner">
+      <div class="loader-ring"></div>
+      <div class="loader-title">IkeHub</div>
+      <div class="loader-sub">Entering the Ikeverse&hellip;</div>
+    </div>
+  `;
+  document.body.appendChild(el);
+}
+
+function dismissLoader() {
+  const el = document.getElementById("ikehub-loader");
+  if (!el) return;
+  el.classList.add("loader-out");
+  setTimeout(() => el.remove(), 900);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CURSOR PARTICLE TRAIL — gold/cyan sparks that follow the pointer
+// Pure CSS divs — zero Three.js overhead
+// ─────────────────────────────────────────────────────────────────────────────
+function injectCursorTrail() {
+  if (REDUCED_MOTION || IS_MOBILE) return; // skip on reduced-motion / touch
+
+  const POOL    = 12;
+  const COLORS  = ["#d4ae5a", "#54c6ee", "#d4ae5a", "#9272f5", "#54c6ee"];
+  const pool    = [];
+
+  // Pre-create particle elements
+  for (let i = 0; i < POOL; i++) {
+    const p = document.createElement("div");
+    p.className = "cursor-spark";
+    document.body.appendChild(p);
+    pool.push({ el: p, active: false });
+  }
+
+  let lastSpawn = 0;
+  window.addEventListener("mousemove", (e) => {
+    const now = Date.now();
+    if (now - lastSpawn < 40) return; // throttle: max ~25 per second
+    lastSpawn = now;
+
+    const slot = pool.find(p => !p.active);
+    if (!slot) return;
+
+    slot.active = true;
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    const size  = 4 + Math.random() * 5;
+    const dx    = (Math.random() - 0.5) * 22;
+    const dy    = (Math.random() - 0.5) * 22 - 10;
+
+    slot.el.style.cssText = `
+      left:${e.clientX}px; top:${e.clientY}px;
+      width:${size}px; height:${size}px;
+      background:${color};
+      box-shadow:0 0 ${size*1.4}px ${color};
+      --dx:${dx}px; --dy:${dy}px;
+      opacity:1; transform:translate(-50%,-50%) scale(1);
+    `;
+    slot.el.classList.remove("spark-gone");
+    // Force reflow
+    void slot.el.offsetWidth;
+    slot.el.classList.add("spark-gone");
+
+    setTimeout(() => { slot.active = false; }, 520);
+  });
+}
+
 function init() {
   console.log("IkeHub main.js loaded:", import.meta.url);
   console.log("IkeHub image base:", IMAGE_BASE);
   console.log("IkeHub hub image:", HUB_IMAGE);
+
+  // Hub pulse state
+  state.hub.pulseT = 0;
 
   makeLights();
   makeBackground();
   makeTwinkles();
   makeEnv();
   makeHub();
+  makeMoonPhaseRing();
   makeCompassRing();
   makeHubParticles();
   makeNodes();
@@ -2263,26 +2488,40 @@ function init() {
   buildDock();
   setPanel(null);
 
-  // ── Entry flythrough — camera starts in deep space, pulls into hub ─────────
-  state.introStart = performance.now();
-  state.introActive = true;
-  camera.position.set(-22, 6, -42);   // dramatic far-angle start
-  controls.target.set(0, 1.25, 0);
-  controls.update();
-  // resetView activates the lerp toward the overview position
+  // Entry flythrough
+  state.introStart  = performance.now();
+  state.introActive = !REDUCED_MOTION;
+  if (!REDUCED_MOTION) {
+    camera.position.set(-22, 6, -42);
+    controls.target.set(0, 1.25, 0);
+    controls.update();
+  }
   resetView(false);
 
-  // ── Restore last selected portal from session ───────────────────────────────
-  const last = loadSession();
-  if (last && APPS.find((a) => a.id === last)) {
-    setTimeout(() => selectApp(last, false), 3200); // after flythrough settles
+  // URL hash deep-link — restore portal from URL on load
+  const hashId = location.hash.replace("#", "");
+  const sessionId = loadSession();
+  const restoreId = (hashId && APPS.find(a => a.id === hashId)) ? hashId
+                  : (sessionId && APPS.find(a => a.id === sessionId)) ? sessionId
+                  : null;
+  if (restoreId) {
+    setTimeout(() => selectApp(restoreId, false), REDUCED_MOTION ? 400 : 3200);
   }
 
   attachEvents();
-  renderer.setAnimationLoop(onFrame);
+
+  // Dismiss loader on first render frame
+  let firstFrame = true;
+  const origLoop = renderer.getAnimationLoop?.();
+  renderer.setAnimationLoop((time) => {
+    onFrame(time);
+    if (firstFrame) { firstFrame = false; dismissLoader(); }
+  });
+
   injectCollapseButtons();
   injectTooltip();
   injectWayfindingToggle();
+  injectCursorTrail();
 
   setTimeout(refreshCardTextures, 1500);
   setTimeout(refreshCardTextures, 4000);
@@ -2292,6 +2531,9 @@ async function boot() {
   await preloadImages();
   init();
 }
+
+// Inject loader immediately — before images or fonts load
+injectLoader();
 
 if (document.fonts?.ready) {
   document.fonts.ready.then(boot).catch(init);
