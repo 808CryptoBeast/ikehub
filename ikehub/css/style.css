@@ -667,3 +667,205 @@ button { font: inherit; cursor: pointer; }
   .detail-panel { max-height: min(26dvh, 190px); }
   .dock-btn { padding: 7px 10px; font-size: 10.5px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   IKEHUB UPGRADE — Wayfinding, Dock Console, Tooltip, Hub Particles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── WAYFINDING TOGGLE BUTTON ───────────────────────────────────────────── */
+.wayfinding-btn {
+  position: absolute;
+  top: var(--safe-t);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 12;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px 8px 14px;
+  border-radius: 999px;
+  background: rgba(4, 9, 22, 0.52);
+  border: 1px solid rgba(84, 198, 238, 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: rgba(172, 193, 228, 0.62);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.wayfinding-btn .wf-icon {
+  font-size: 13px;
+  color: var(--gold);
+  opacity: 0.68;
+  transition: opacity 0.2s, text-shadow 0.2s;
+}
+
+.wayfinding-btn:hover {
+  background: rgba(4, 9, 22, 0.72);
+  border-color: rgba(212, 174, 90, 0.32);
+  color: var(--text);
+}
+
+.wayfinding-btn.active {
+  background: rgba(212, 174, 90, 0.10);
+  border-color: rgba(212, 174, 90, 0.44);
+  color: var(--gold);
+  box-shadow: 0 0 18px rgba(212, 174, 90, 0.16), inset 0 0 12px rgba(212, 174, 90, 0.06);
+}
+
+.wayfinding-btn.active .wf-icon {
+  opacity: 1;
+  text-shadow: 0 0 10px var(--gold);
+  animation: wf-star-pulse 2s ease-in-out infinite;
+}
+
+@keyframes wf-star-pulse {
+  0%, 100% { text-shadow: 0 0 8px var(--gold); }
+  50%       { text-shadow: 0 0 18px var(--gold), 0 0 32px rgba(212,174,90,0.4); }
+}
+
+/* ─── WAYFINDING NAV PATH ────────────────────────────────────────────────── */
+#wf-nav-path {
+  display: none;
+  margin-top: 12px;
+  padding: 9px 14px;
+  border-radius: var(--r-md);
+  background: rgba(212, 174, 90, 0.06);
+  border: 1px solid rgba(212, 174, 90, 0.18);
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+}
+
+.wf-path-hub  { color: var(--cyan); font-weight: 700; }
+.wf-arrow     { color: var(--gold); margin: 0 6px; opacity: 0.6; }
+.wf-path-dest { font-weight: 700; }
+.wf-path-all  { color: var(--muted); }
+
+/* ─── DOCK CONSOLE UPGRADE ───────────────────────────────────────────────── */
+.dock-initial {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  margin-right: 4px;
+  opacity: 0.84;
+  flex-shrink: 0;
+}
+
+.dock-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dock-key {
+  margin-left: 7px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  font-family: var(--font-body);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: rgba(172, 193, 228, 0.44);
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.dock-btn:hover .dock-key { opacity: 1; }
+
+/* Active dock glow underline */
+.dock-btn { position: relative; display: inline-flex; align-items: center; gap: 0; }
+
+.dock-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(84, 198, 238, 0.72), transparent);
+  animation: dock-underline-in 0.22s ease forwards;
+}
+
+@keyframes dock-underline-in {
+  from { opacity: 0; transform: scaleX(0.4); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+/* ─── HOVER TOOLTIP UPGRADE ──────────────────────────────────────────────── */
+#ikehub-tooltip {
+  max-width: 220px;
+  line-height: 1.5;
+}
+
+.tip-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 3px;
+}
+
+.tip-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.tip-status {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.tip-ctx {
+  font-size: 10.5px;
+  color: rgba(140, 162, 200, 0.58);
+  font-style: italic;
+}
+
+.tip-launch {
+  color: var(--cyan);
+  font-style: normal;
+  font-weight: 600;
+}
+
+/* ─── WAYFINDING NAV PATH IN DETAIL PANEL ────────────────────────────────── */
+.detail-panel #wf-nav-path {
+  order: 99;
+}
+
+/* ─── REDUCED MOTION ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dock-btn.active::after { animation: none; }
+  .wayfinding-btn.active .wf-icon { animation: none; }
+  .dock-btn .live-dot.is-live { animation: none; }
+  .app-shell::before { opacity: 0.55; }
+}
+
+/* ─── RESPONSIVE — WAYFINDING BUTTON ────────────────────────────────────── */
+@media (max-width: 720px) {
+  .wayfinding-btn {
+    top: auto;
+    bottom: calc(var(--safe-b) + 56px);
+    left: auto;
+    right: var(--safe-r);
+    transform: none;
+    padding: 7px 12px;
+    font-size: 10px;
+  }
+
+  .wayfinding-btn .wf-label { display: none; }
+  .wayfinding-btn .wf-icon  { font-size: 15px; }
+}

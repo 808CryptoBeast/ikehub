@@ -107,7 +107,7 @@ const renderer = new THREE.WebGLRenderer({
   powerPreference: "high-performance"
 });
 
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -132,9 +132,9 @@ composer.addPass(new RenderPass(scene, camera));
 
 const bloom = new UnrealBloomPass(
   new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.13,
-  0.30,
-  0.76
+  IS_MOBILE ? 0.08 : 0.13,
+  IS_MOBILE ? 0.22 : 0.30,
+  IS_MOBILE ? 0.82 : 0.76
 );
 
 composer.addPass(bloom);
@@ -244,6 +244,12 @@ function getLayout() {
 // ─────────────────────────────────────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// REDUCED MOTION — respect prefers-reduced-motion OS setting
+// ─────────────────────────────────────────────────────────────────────────────
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const IS_MOBILE      = window.innerWidth <= 680;
+
 const state = {
   selected:       null,
   hovered:        null,
@@ -252,8 +258,9 @@ const state = {
   camTargetPos:   new THREE.Vector3(),
   camTargetLook:  new THREE.Vector3(),
   cameraLerping:  false,
-  introActive:    true,
+  introActive:    !REDUCED_MOTION, // skip intro on reduced-motion
   introStart:     0,
+  wayfinding:     false,           // wayfinding mode toggle
   cfg:            getLayout(),
   nodes:          new Map(),
   pickable:       [],
@@ -1001,6 +1008,236 @@ function makeEnv() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COMPASS RING — Hawaiian star navigation instrument around hub core
+// 28 radial tick marks + 4 cardinal accent spokes, rotates slowly
+// ─────────────────────────────────────────────────────────────────────────────
+function makeCompassRing() {
+  const grp = new THREE.Group();
+  grp.position.y = 1.8; // matches sphere.position.y
+
+  const TICKS   = 28;
+  const R_INNER = 1.52;
+  const R_OUTER = 1.78;
+  const R_CARD  = 1.90; // cardinal spokes reach further
+
+  const baseMat = new THREE.LineBasicMaterial({
+    color: 0xd4ae5a, transparent: true, opacity: 0.22, depthWrite: false
+  });
+  const cardMat = new THREE.LineBasicMaterial({
+    color: 0x54c6ee, transparent: true, opacity: 0.34, depthWrite: false
+  });
+
+  for (let i = 0; i < TICKS; i++) {
+    const angle    = (i / TICKS) * Math.PI * 2;
+    const isCard   = i % 7 === 0; // 4 cardinal accents
+    const rInner   = isCard ? R_INNER - 0.08 : R_INNER;
+    const rOuter   = isCard ? R_CARD  : R_OUTER;
+    const mat      = isCard ? cardMat : baseMat;
+
+    const pts = [
+      new THREE.Vector3(Math.cos(angle) * rInner, 0, Math.sin(angle) * rInner),
+      new THREE.Vector3(Math.cos(angle) * rOuter,  0, Math.sin(angle) * rOuter)
+    ];
+    const geo  = new THREE.BufferGeometry().setFromPoints(pts);
+    const line = new THREE.Line(geo, mat);
+    grp.add(line);
+  }
+
+  // Outer precision ring
+  const ringGeo = new THREE.TorusGeometry(R_OUTER + 0.04, 0.007, 8, 120);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0xd4ae5a, transparent: true, opacity: 0.16, depthWrite: false
+  });
+  grp.add(new THREE.Mesh(ringGeo, ringMat));
+
+  world.add(grp);
+  state.hub.compassRing = grp;
+  state.hub.compassBaseMat = baseMat;
+  state.hub.compassCardMat = cardMat;
+  state.hub.compassRingMat = ringMat;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENERGY BEAM — animated bright connection when a portal is selected
+// One beam per app, stored in state.nodes[id].energyBeam
+// ─────────────────────────────────────────────────────────────────────────────
+function makeEnergyBeam(app, nd) {
+  const col    = new THREE.Color(app.color);
+  const points = nd.curve ? nd.curve.getPoints(64) : [];
+  const geo    = new THREE.BufferGeometry().setFromPoints(points);
+  const mat    = new THREE.LineBasicMaterial({
+    color: col, transparent: true, opacity: 0,
+    depthWrite: false, blending: THREE.AdditiveBlending, linewidth: 1
+  });
+  const beam = new THREE.Line(geo, mat);
+  beam.renderOrder = 5;
+  connGrp.add(beam);
+  nd.energyBeam    = beam;
+  nd.energyBeamMat = mat;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUB PARTICLES — slow golden/cyan mana dust orbiting the central sphere
+// ─────────────────────────────────────────────────────────────────────────────
+function makeHubParticles() {
+  const COUNT = IS_MOBILE ? 18 : 36;
+  const pos   = new Float32Array(COUNT * 3);
+  const col   = new Float32Array(COUNT * 3);
+
+  for (let i = 0; i < COUNT; i++) {
+    const r     = 1.8 + Math.random() * 1.4;
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(Math.random() * 2 - 1);
+    pos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    pos[i*3+1] = 1.8 + r * Math.cos(phi) * 0.55;
+    pos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+    // Alternate gold / cyan
+    if (i % 3 === 0) {
+      col[i*3] = 0.83; col[i*3+1] = 0.69; col[i*3+2] = 0.35; // gold
+    } else if (i % 3 === 1) {
+      col[i*3] = 0.33; col[i*3+1] = 0.78; col[i*3+2] = 0.93; // cyan
+    } else {
+      col[i*3] = 0.57; col[i*3+1] = 0.47; col[i*3+2] = 0.96; // violet
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("color",    new THREE.BufferAttribute(col, 3));
+
+  // Store original positions for orbital animation
+  geo.userData.base = pos.slice();
+
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({
+    size: 0.045, vertexColors: true, transparent: true,
+    opacity: REDUCED_MOTION ? 0.18 : 0.36,
+    depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+  }));
+
+  world.add(pts);
+  state.hub.particles   = pts;
+  state.hub.particleGeo = geo;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUB PARTICLE ANIMATION
+// ─────────────────────────────────────────────────────────────────────────────
+function updateHubParticles(t) {
+  const pts = state.hub.particles;
+  if (!pts) return;
+  const geo  = state.hub.particleGeo;
+  const base = geo.userData.base;
+  const pos  = geo.attributes.position.array;
+  const COUNT = pos.length / 3;
+  const speed = REDUCED_MOTION ? 0.06 : 0.18;
+
+  for (let i = 0; i < COUNT; i++) {
+    const bx = base[i*3], by = base[i*3+1], bz = base[i*3+2];
+    const phase = i * 0.44;
+    // Slow orbital drift around the hub
+    const angle = t * speed + phase;
+    const r     = Math.sqrt(bx*bx + bz*bz);
+    pos[i*3]   = Math.cos(angle) * r;
+    pos[i*3+2] = Math.sin(angle) * r;
+    pos[i*3+1] = by + Math.sin(t * 0.32 + phase) * 0.18;
+  }
+  geo.attributes.position.needsUpdate = true;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENERGY BEAM ANIMATION
+// ─────────────────────────────────────────────────────────────────────────────
+function updateEnergyBeam(t) {
+  APPS.forEach((app) => {
+    const nd = state.nodes.get(app.id);
+    if (!nd?.energyBeam) return;
+
+    const sel    = state.selected === app.id;
+    const target = sel ? (state.wayfinding ? 0.68 : 0.52) : 0.0;
+    const mat    = nd.energyBeamMat;
+
+    mat.opacity = THREE.MathUtils.lerp(mat.opacity, target, 0.07);
+
+    // Pulse the selected beam
+    if (sel && mat.opacity > 0.05) {
+      mat.opacity += Math.sin(t * 4.5) * 0.06;
+      mat.opacity  = Math.max(0, Math.min(1, mat.opacity));
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPASS RING ANIMATION
+// ─────────────────────────────────────────────────────────────────────────────
+function updateCompassRing(t) {
+  const h = state.hub;
+  if (!h.compassRing) return;
+
+  // Slow counter-rotation for celestial instrument feel
+  h.compassRing.rotation.y = -t * 0.08;
+
+  // Wayfinding mode: brighten
+  const target = state.wayfinding ? 0.48 : 0.22;
+  h.compassBaseMat.opacity = THREE.MathUtils.lerp(h.compassBaseMat.opacity, target,      0.04);
+  h.compassCardMat.opacity = THREE.MathUtils.lerp(h.compassCardMat.opacity, target*1.55, 0.04);
+  h.compassRingMat.opacity = THREE.MathUtils.lerp(h.compassRingMat.opacity, target*0.72, 0.04);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WAYFINDING MODE TOGGLE
+// ─────────────────────────────────────────────────────────────────────────────
+function injectWayfindingToggle() {
+  const btn = document.createElement("button");
+  btn.id        = "wayfinding-btn";
+  btn.type      = "button";
+  btn.className = "wayfinding-btn";
+  btn.setAttribute("aria-label", "Toggle Wayfinding Mode");
+  btn.innerHTML = `<span class="wf-icon">✦</span><span class="wf-label">Wayfinding</span>`;
+
+  btn.addEventListener("click", () => {
+    state.wayfinding = !state.wayfinding;
+    btn.classList.toggle("active", state.wayfinding);
+    updateWayfindingMode();
+  });
+
+  // Insert into app-shell
+  const shell = document.querySelector(".app-shell");
+  if (shell) shell.appendChild(btn);
+}
+
+function updateWayfindingMode() {
+  // Show/hide navigation path in detail panel
+  const pathEl = document.getElementById("wf-nav-path");
+  if (pathEl) pathEl.style.display = state.wayfinding ? "block" : "none";
+
+  // Create nav path element if not yet injected
+  if (!document.getElementById("wf-nav-path")) {
+    const np = document.createElement("div");
+    np.id    = "wf-nav-path";
+    const dp = document.querySelector(".detail-panel");
+    if (dp) dp.appendChild(np);
+  }
+}
+
+// Show navigation path in panel when wayfinding active
+function renderNavPath() {
+  const pathEl = document.getElementById("wf-nav-path");
+  if (!pathEl) return;
+
+  if (state.selected) {
+    const nd  = state.nodes.get(state.selected);
+    const col = nd ? ("#" + new THREE.Color(nd.app.color).getHexString()) : "#54c6ee";
+    pathEl.innerHTML = `<span class="wf-path-hub">IkeHub</span>
+      <span class="wf-arrow">→</span>
+      <span class="wf-path-dest" style="color:${col}">${nd?.app.title || ""}</span>`;
+  } else {
+    const path = APPS.filter(a => a.live).map(a => a.title.split(" ")[0]).join(" → ");
+    pathEl.innerHTML = `<span class="wf-path-hub">IkeHub</span>
+      <span class="wf-arrow">→</span><span class="wf-path-all">${path}</span>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HUB — sphere (planet tex + icon decal) + 3 rings + Old English title
 // ─────────────────────────────────────────────────────────────────────────────
 function makeHub() {
@@ -1350,34 +1587,42 @@ function makeConnections() {
       });
     }
     nd.flowItems = flowItems;
+
+    // Energy beam — animated bright overlay for selected portal
+    makeEnergyBeam(app, nd);
   });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DOCK / UI
+// DOCK / UI — command console with initials, live dots, keyboard hints
 // ─────────────────────────────────────────────────────────────────────────────
 function buildDock() {
   dockEl.innerHTML = "";
   state.dockBtns.clear();
 
   const ov = document.createElement("button");
-  ov.type      = "button";
-  ov.className = "dock-btn";
-  ov.textContent = "Overview";
+  ov.type = "button"; ov.className = "dock-btn";
+  ov.setAttribute("aria-label", "Reset to overview (Esc)");
+  ov.innerHTML = `<span class="dock-initial">⌂</span><span class="dock-label">Overview</span><kbd class="dock-key" aria-hidden="true">Esc</kbd>`;
   ov.addEventListener("click", () => resetView(true));
   dockEl.appendChild(ov);
   state.dockBtns.set("overview", ov);
 
   APPS.forEach((app, i) => {
-    const btn = document.createElement("button");
+    const btn     = document.createElement("button");
     btn.type      = "button";
     btn.className = "dock-btn";
+    btn.setAttribute("aria-label", `${app.title} — ${app.live ? "Live" : "Coming soon"} (press ${i+1})`);
 
-    // Live status dot
-    const dot = document.createElement("span");
-    dot.className = `live-dot ${app.live ? "is-live" : "is-soon"}`;
-    btn.appendChild(dot);
-    btn.appendChild(document.createTextNode(`${i + 1}. ${app.title}`));
+    // Initial glyph from first word of title
+    const initial = app.title.replace("The ", "").charAt(0).toUpperCase();
+
+    btn.innerHTML = `
+      <span class="live-dot ${app.live ? "is-live" : "is-soon"}" aria-hidden="true"></span>
+      <span class="dock-initial" style="color:#${ new THREE.Color(app.color).getHexString()}">${initial}</span>
+      <span class="dock-label">${i + 1}. ${app.title}</span>
+      <kbd class="dock-key" aria-hidden="true">${i + 1}</kbd>
+    `.trim();
 
     btn.addEventListener("click", () => selectApp(app.id, true));
     dockEl.appendChild(btn);
@@ -1436,6 +1681,7 @@ function setPanel(app) {
     app.tags.forEach(addTag);
     elMode.textContent   = "Focused";
     liveEl.textContent   = `${app.title} selected`;
+    if (state.wayfinding) renderNavPath();
   }
 }
 
@@ -1628,30 +1874,57 @@ function updateHover() {
 
   // Drive hover tooltip
   const tip = window._ikeTip;
-  if (tip) {
-    if (state.hovered && state.selected !== state.hovered) {
-      const app = APPS.find((a) => a.id === state.hovered);
-      if (app) {
-        const dot = app.live
-          ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#44ff88;box-shadow:0 0 5px #44ff88;margin-right:7px;vertical-align:middle"></span>`
-          : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#ffaa33;margin-right:7px;vertical-align:middle"></span>`;
-        tip.innerHTML = dot + app.title;
-        tip.className = "visible";
+  if (!tip) return;
+
+  if (state.hovered) {
+    const app    = APPS.find((a) => a.id === state.hovered);
+    const isSel  = state.selected === state.hovered;
+    if (app) {
+      const dotColor = app.live ? "#44ff88" : "#ffaa33";
+      const dotStyle = `display:inline-block;width:7px;height:7px;border-radius:50%;background:${dotColor};box-shadow:0 0 5px ${dotColor};margin-right:7px;vertical-align:middle;flex-shrink:0`;
+      const ctxMsg   = isSel
+        ? `<span class="tip-ctx tip-launch">Click again to launch →</span>`
+        : `<span class="tip-ctx">Click to focus</span>`;
+      const statusLbl = app.live ? "Live" : "Coming Soon";
+
+      tip.innerHTML = `
+        <div class="tip-row">
+          <span style="${dotStyle}" aria-hidden="true"></span>
+          <strong class="tip-title">${app.title}</strong>
+        </div>
+        <div class="tip-status">${app.status} &nbsp;·&nbsp; ${statusLbl}</div>
+        ${ctxMsg}
+      `;
+      tip.className = "visible";
+
+      // Off-screen guard: flip left if too close to right edge
+      const rect  = tip.getBoundingClientRect();
+      const rawX  = parseInt(tip.style.left) || 0;
+      const rawY  = parseInt(tip.style.top)  || 0;
+      if (rawX + rect.width + 20 > window.innerWidth) {
+        tip.style.left = Math.max(8, rawX - rect.width - 26) + "px";
       }
-    } else {
-      tip.className = "hidden";
+      if (rawY + rect.height + 8 > window.innerHeight) {
+        tip.style.top = Math.max(8, rawY - rect.height - 8) + "px";
+      }
     }
+  } else {
+    tip.className = "hidden";
   }
 }
 
-function updateHub() {
+function updateHub(t) {
   const h = state.hub;
   if (!h.group) return;
-  h.group.rotation.y  += 0.0011;
-  h.sphere.rotation.y += 0.0019;
-  h.ringA.rotation.y  += 0.0024;
-  h.ringB.rotation.y  -= 0.0042;
-  h.ringC.rotation.y  += 0.0058;
+
+  const speed = REDUCED_MOTION ? 0.25 : 1.0;
+  h.group.rotation.y  += 0.0011 * speed;
+  h.sphere.rotation.y += 0.0019 * speed;
+  h.ringA.rotation.y  += 0.0024 * speed;
+  h.ringB.rotation.y  -= 0.0042 * speed;
+  h.ringC.rotation.y  += 0.0058 * speed;
+
+  updateCompassRing(t);
 }
 
 function updateNodes(t) {
@@ -1692,12 +1965,18 @@ function updateNodes(t) {
       nd.track.material.opacity, sel ? 0.17 : hov ? 0.13 : 0.09, 0.1
     );
 
-    // Live badge — pulse for live portals, dim steady for coming-soon
+    // Live badge — pulse for live, dim steady for coming-soon, stronger on select
     if (nd.liveBadge) {
-      if (app.live) {
-        nd.liveBadge.material.opacity = 0.72 + Math.sin(t * 2.8 + idx * 0.7) * 0.22;
+      const wfBoost = state.wayfinding ? 0.15 : 0;
+      if (sel) {
+        nd.liveBadge.material.opacity = 0.86 + Math.sin(t * 3.6) * 0.12;
+        nd.liveBadge.scale.setScalar(REDUCED_MOTION ? 0.44 : 0.50 + Math.sin(t*2.2)*0.06);
+      } else if (app.live) {
+        nd.liveBadge.material.opacity = Math.min(1, (REDUCED_MOTION ? 0.55 : 0.72 + Math.sin(t * 2.8 + idx * 0.7) * 0.22) + wfBoost);
+        nd.liveBadge.scale.setScalar(0.38);
       } else {
-        nd.liveBadge.material.opacity = 0.38 + Math.sin(t * 1.2 + idx * 0.4) * 0.08;
+        nd.liveBadge.material.opacity = 0.36 + Math.sin(t * 1.2 + idx * 0.4) * 0.07;
+        nd.liveBadge.scale.setScalar(0.34);
       }
     }
 
@@ -1797,14 +2076,17 @@ function onFrame() {
   }
 
   if (state.spinning) {
-    nodeRoot.rotation.y += 0.00095;
-    connGrp.rotation.y  += 0.00095;
+    const spinSpeed = REDUCED_MOTION ? 0.00032 : 0.00095;
+    nodeRoot.rotation.y += spinSpeed;
+    connGrp.rotation.y  += spinSpeed;
   }
 
   updateHover();
-  updateHub();
+  updateHub(t);
   updateNodes(t);
   updateBackground(t);
+  updateEnergyBeam(t);
+  updateHubParticles(t);
   updateCamera();
   composer.render();
 }
@@ -1973,6 +2255,8 @@ function init() {
   makeTwinkles();
   makeEnv();
   makeHub();
+  makeCompassRing();
+  makeHubParticles();
   makeNodes();
   placeNodes();
   makeConnections();
@@ -1998,6 +2282,7 @@ function init() {
   renderer.setAnimationLoop(onFrame);
   injectCollapseButtons();
   injectTooltip();
+  injectWayfindingToggle();
 
   setTimeout(refreshCardTextures, 1500);
   setTimeout(refreshCardTextures, 4000);
