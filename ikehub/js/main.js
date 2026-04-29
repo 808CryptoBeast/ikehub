@@ -36,7 +36,7 @@ const APPS = [
     title: "The Living Knowledge Platform",
     subtitle: "Knowledge as a living, connected ecosystem.",
     description: "A platform for organizing, surfacing, and evolving knowledge through interlinked structures, editorial systems, and living archives.",
-    href: "living-knowledge.html",
+    href: "https://808cryptobeast.github.io/The-Living-Knowledge-Platform/",
     image: img("thelivingknowledge.png"),
     color: 0x77f0b2,
     status: "Knowledge Engine",
